@@ -1,0 +1,66 @@
+version: "3.8"
+
+services:
+  app:
+    build: .
+    container_name: crypto_backend
+    restart: always
+    env_file: .env
+    depends_on:
+      - db
+      - redis
+    ports:
+      - "8000:8000"
+
+  db:
+    image: postgres:15
+    container_name: postgres_db
+    restart: always
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: db_name
+    ports:
+      - "5432:5432"
+
+  redis:
+    image: redis:6.2
+    container_name: redis_cache
+    restart: always
+    ports:
+      - "6379:6379"
+
+  celery_worker:
+    build: .
+    container_name: celery_worker
+    restart: always
+    env_file: .env
+    depends_on:
+      - app
+      - redis
+    command: ["celery", "-A", "app.celery_app", "worker", "--loglevel=info"]
+
+  celery_beat:
+    build: .
+    container_name: celery_beat
+    restart: always
+    env_file: .env
+    depends_on:
+      - celery_worker
+    command: ["celery", "-A", "app.celery_app", "beat", "--loglevel=info"]
+
+  healthcheck:
+    image: curlimages/curl:latest
+    container_name: healthcheck
+    depends_on:
+      - app
+      - db
+      - redis
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        while ! curl -sSf http://app:8000/healthz; do
+          echo "Waiting for API..."
+          sleep 5
+        done
+        echo "API is up!"

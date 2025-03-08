@@ -1,0 +1,66 @@
+# Ignore all .env files except .env.example
+.env*
+!.env.example
+
+# Byte-compiled / cached files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.DS_Store
+
+# Virtual environments
+venv/
+
+# Logs and database dumps
+logs/
+*.log
+*.sqlite3
+*.db
+*.sql
+dump.rdb
+
+# Secret credentials
+config/settings_local.py
+
+# Compiled files
+*.out
+*.o
+*.pyc
+
+# Unit test & coverage reports
+htmlcov/
+.coverage
+.tox/
+nosetests.xml
+test-results.xml
+coverage.xml
+*.cover
+*.hypothesis/
+
+# IDE/editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# FastAPI & Uvicorn
+instance/
+*.pid
+
+# Docker
+docker-compose.override.yml
+.dockerignore
+
+# Migrations & cache
+alembic/versions/*.pyc
+alembic/versions/*.pyo
+alembic/versions/*.DS_Store
+
+# Celery & Redis
+celerybeat-schedule
+celerybeat.pid
+
+# Static analysis
+mypy_cache/
+ruff_cache/
