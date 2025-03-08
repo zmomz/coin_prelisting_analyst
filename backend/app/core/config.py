@@ -1,7 +1,7 @@
 import os
 from typing import List
-from pydantic import BaseSettings, AnyHttpUrl, validator
-
+from pydantic import AnyHttpUrl, validator
+from pydantic_settings import BaseSettings
 
 class Settings(BaseSettings):
     PROJECT_NAME: str = "coin prelisting analyst"
@@ -33,6 +33,6 @@ class Settings(BaseSettings):
     class Config:
         case_sensitive = True
         env_file = ".env"
-
+        extra = "allow"
 
 settings = Settings()
