@@ -1,9 +1,7 @@
-version: "3.8"
-
 services:
   app:
     build: .
-    container_name: crypto_backend
+    container_name: coin_prelisting_analyst
     restart: always
     env_file: .env
     depends_on:
@@ -59,7 +57,7 @@ services:
     entrypoint: ["/bin/sh", "-c"]
     command:
       - |
-        while ! curl -sSf http://app:8000/healthz; do
+        while ! curl -sSf http://app:8000/api/health; do
           echo "Waiting for API..."
           sleep 5
         done

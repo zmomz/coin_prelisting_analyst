@@ -7,7 +7,9 @@ from app.core.config import settings
 from app.main import app
 from fastapi.testclient import TestClient
 
-DATABASE_URL = "sqlite+aiosqlite:///:memory:"  # In-memory SQLite for testing
+import os
+
+DATABASE_URL = os.getenv("TEST_DATABASE_URL")
 
 engine = create_async_engine(DATABASE_URL, echo=False)
 TestingSessionLocal = sessionmaker(bind=engine, class_=AsyncSession, expire_on_commit=False)

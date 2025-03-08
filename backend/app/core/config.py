@@ -4,7 +4,7 @@ from pydantic import BaseSettings, AnyHttpUrl, validator
 
 
 class Settings(BaseSettings):
-    PROJECT_NAME: str = "Crypto Exchange Backend"
+    PROJECT_NAME: str = "coin prelisting analyst"
     API_V1_STR: str = "/api/v1"
     SECRET_KEY: str
 
