@@ -11,10 +11,9 @@ from app.core.config import settings
 
 router = APIRouter()
 
-
 @router.post("/login", response_model=Token)
 async def login_user(email: str, password: str, db: AsyncSession = Depends(get_db)):
-    user = await get_user_by_email(db, email)
+    user = await get_user_by_email(db, email)  # Ensure 'await' is used
     if not user or not verify_password(password, user.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -26,12 +25,11 @@ async def login_user(email: str, password: str, db: AsyncSession = Depends(get_d
     
     return {"access_token": access_token, "token_type": "bearer"}
 
-
 @router.post("/register", response_model=UserOut)
 async def register_user(user_in: UserCreate, db: AsyncSession = Depends(get_db)):
-    existing_user = await get_user_by_email(db, user_in.email)
+    existing_user = await get_user_by_email(db, user_in.email)  # Ensure 'await' is used
     if existing_user:
         raise HTTPException(status_code=400, detail="Email already registered")
 
-    user = await create_user(db, user_in)
+    user = await create_user(db, user_in)  # Ensure 'await' is used
     return user
