@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from typing import Dict, Optional
 from uuid import UUID
 from datetime import datetime
@@ -27,12 +27,11 @@ class MetricResponseSchema(BaseModel):
     market_cap: MetricValueSchema
     volume_24h: MetricValueSchema
     liquidity: MetricValueSchema
-    github_activity: Dict[str, int]  # Dictionary structure for GitHub activity
-    twitter_sentiment: Dict[str, float]  # Dictionary structure for Twitter sentiment
-    reddit_sentiment: Dict[str, float]  # Dictionary structure for Reddit sentiment
+    github_activity: Dict[str, int]
+    twitter_sentiment: Dict[str, float]
+    reddit_sentiment: Dict[str, float]
     fetched_at: datetime
     is_active: bool
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)

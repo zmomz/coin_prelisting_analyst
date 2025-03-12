@@ -49,6 +49,7 @@ TestingSessionLocal = sessionmaker(
     autoflush=False,
 )
 
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Ensure test database is set up before running tests."""
@@ -64,8 +65,9 @@ async def lifespan(app: FastAPI):
         print("🧹 Cleaning Up Test Database...")
         await conn.run_sync(Base.metadata.drop_all)
 
+
 # Attach lifespan to FastAPI instance
-app = FastAPI(lifespan=lifespan)
+app = FastAPI(lifespan=lifespan)  # noqa
 
 
 # ✅ Ensure a consistent event loop across all tests
@@ -115,7 +117,8 @@ async def client():
 
 @pytest.fixture(scope="function")
 async def unauthorized_client():
-    """Fixture for an unauthenticated client (ensures no Authorization header)."""
+    """Fixture for an unauthenticated
+    client (ensures no Authorization header)."""
     async with AsyncClient(base_url="http://127.0.0.1:8000") as client:
         client.headers.pop("Authorization", None)  # Ensure no auth header
         yield client
@@ -164,7 +167,8 @@ async def manager_client(client: AsyncClient, db_session: AsyncSession):
 
     response = await client.post(
         "/api/v1/auth/register",
-        json={"email": unique_email, "password": "testpassword", "name": "Test Manager", "role": "manager"},
+        json={"email": unique_email, "password": "testpassword",
+              "name": "Test Manager", "role": "manager"},
     )
     assert response.status_code == 201, response.text
 
@@ -245,10 +249,11 @@ async def test_metrics(db_session, test_coin):
     ]
 
     db_session.add_all(metrics)
-    await db_session.commit()  # ✅ Ensure transactions are committed before querying
-    await db_session.flush()  # ✅ Force DB sync
+    await db_session.commit()
+    await db_session.flush()
 
     return metrics
+
 
 @pytest.fixture(scope="function")
 async def test_suggestion(db_session, test_coin, test_user):
@@ -273,7 +278,7 @@ async def test_suggestion(db_session, test_coin, test_user):
 async def scoring_weight(db_session: AsyncSession):
     """Fixture to create a test scoring weight entry."""
     weight = ScoringWeight(
-        liquidity_score=0.3,  # ✅ Use `liquidity_score` instead of `liquidity_weight`
+        liquidity_score=0.3,
         developer_score=0.2,
         community_score=0.2,
         market_score=0.3,

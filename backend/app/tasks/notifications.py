@@ -1,5 +1,3 @@
-import uuid
-from sqlalchemy.ext.asyncio import AsyncSession
 from app.celery_app import celery_app
 from app.db.session import AsyncSessionLocalMain
 from app.services.notifications import send_slack_notification
@@ -18,5 +16,7 @@ async def notify_pending_suggestions():
         ]
 
         if pending_suggestions:
-            message = f"🔔 There are {len(pending_suggestions)} pending suggestions for review."
+            message = f"""🔔 There are {len(pending_suggestions)}
+                        pending suggestions for review.
+                        {pending_suggestions}"""
             await send_slack_notification(message)

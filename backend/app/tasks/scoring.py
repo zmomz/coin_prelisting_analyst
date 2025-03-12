@@ -1,5 +1,3 @@
-import uuid
-from sqlalchemy.ext.asyncio import AsyncSession
 from app.celery_app import celery_app
 from app.db.session import AsyncSessionLocalMain
 from app.services.scoring import update_coin_score

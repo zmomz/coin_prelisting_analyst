@@ -8,14 +8,14 @@ from sqlalchemy.future import select
 from app.models.coin import Coin
 from sqlalchemy import delete
 
-logger = logging.getLogger(__name__)  # ✅ Initialize logger
+logger = logging.getLogger(__name__)
 
 
 
 @pytest.mark.asyncio(loop_scope="session")
 async def test_create_coin(manager_client: AsyncClient):
     """Test creating a coin as a Manager."""
-    unique_symbol = f"TEST_{uuid.uuid4().hex[:6]}"  # Unique symbol for each test
+    unique_symbol = f"TEST_{uuid.uuid4().hex[:6]}"
     unique_id = str(uuid.uuid4())
     request_payload = {
         "id": unique_id,
@@ -31,7 +31,7 @@ async def test_create_coin(manager_client: AsyncClient):
     )
 
     print("🔍 Response Status:", response.status_code)
-    print("🔍 Response Body:", response.json())  # Print the API response for debugging
+    print("🔍 Response Body:", response.json())
 
     assert response.status_code == 201, f"Expected 201 but got {response.status_code} with response {response.json()}"
 
@@ -70,7 +70,6 @@ async def test_create_coin_unauthorized(unauthorized_client: AsyncClient, db_ses
 
     # ✅ Assert expected response
     assert response.status_code == 401, f"Expected 401, got {response.status_code}"
-
 
 
 @pytest.mark.asyncio(loop_scope="session")

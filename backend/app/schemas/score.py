@@ -1,4 +1,4 @@
-from pydantic import BaseModel, UUID4, Field
+from pydantic import BaseModel, UUID4, Field, ConfigDict
 from datetime import datetime
 
 
@@ -28,8 +28,7 @@ class ScoreInDB(ScoreBase):
     scoring_weight_id: UUID4
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # ✅ Output schema for returning Score in API responses
