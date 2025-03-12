@@ -1,19 +1,27 @@
+from fastapi import HTTPException
 import uuid
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
-from sqlalchemy.orm import selectinload
 from typing import List, Optional
 
 from app.models.coin import Coin
 from app.schemas.coin import CoinCreate, CoinUpdate
+from sqlalchemy.exc import IntegrityError
+import logging
+logger = logging.getLogger(__name__)
 
 
 async def create_coin(db: AsyncSession, coin_in: CoinCreate) -> Coin:
-    coin = Coin(**coin_in.dict())
+    coin = Coin(**coin_in.model_dump())
     db.add(coin)
-    await db.commit()
-    await db.refresh(coin)
-    return coin
+    try:
+        await db.commit()
+        await db.refresh(coin)
+        return coin
+    except IntegrityError as e:
+        await db.rollback()  # ✅ Rollback the transaction on failure
+        logger.error(f"🚨 Database Integrity Error: {e}")
+        raise HTTPException(status_code=409, detail="Coin symbol already exists")  # ✅ Return 409 Conflict
 
 
 async def get_coin(db: AsyncSession, coin_id: uuid.UUID) -> Optional[Coin]:

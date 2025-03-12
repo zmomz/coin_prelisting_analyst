@@ -6,7 +6,7 @@ from app.utils.api_clients.twitter import fetch_twitter_sentiment
 from app.utils.api_clients.reddit import fetch_reddit_sentiment
 
 
-@pytest.mark.asyncio
+@pytest.mark.asyncio(loop_scope="session")
 @patch("app.utils.api_clients.coingecko.httpx.AsyncClient.get", new_callable=AsyncMock)
 async def test_fetch_coin_market_data_api_failure(mock_get):
     """Test CoinGecko API failure handling."""
@@ -16,7 +16,7 @@ async def test_fetch_coin_market_data_api_failure(mock_get):
     assert result is None  # Ensure function handles API failures gracefully
 
 
-@pytest.mark.asyncio
+@pytest.mark.asyncio(loop_scope="session")
 @patch("app.utils.api_clients.github.httpx.AsyncClient.get", new_callable=AsyncMock)
 async def test_fetch_github_activity_api_failure(mock_get):
     """Test GitHub API failure handling."""
@@ -26,7 +26,7 @@ async def test_fetch_github_activity_api_failure(mock_get):
     assert result is None  # Ensure function handles API failures properly
 
 
-@pytest.mark.asyncio
+@pytest.mark.asyncio(loop_scope="session")
 @patch("app.utils.api_clients.twitter.httpx.AsyncClient.get", new_callable=AsyncMock)
 async def test_fetch_twitter_sentiment_api_failure(mock_get):
     """Test Twitter API failure handling."""
@@ -36,7 +36,7 @@ async def test_fetch_twitter_sentiment_api_failure(mock_get):
     assert result is None  # Ensure function handles API failures properly
 
 
-@pytest.mark.asyncio
+@pytest.mark.asyncio(loop_scope="session")
 @patch("app.utils.api_clients.reddit.httpx.AsyncClient.get", new_callable=AsyncMock)
 async def test_fetch_reddit_sentiment_api_failure(mock_get):
     """Test Reddit API failure handling."""

@@ -4,7 +4,7 @@ from httpx import AsyncClient
 from unittest.mock import AsyncMock, patch
 
 
-@pytest.mark.asyncio
+@pytest.mark.asyncio(loop_scope="session")
 @patch("app.services.notifications.httpx.AsyncClient.post", new_callable=AsyncMock)
 async def test_send_slack_notification(mock_post):
     """Test sending a Slack notification."""

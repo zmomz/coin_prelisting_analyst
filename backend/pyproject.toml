@@ -5,9 +5,46 @@ target-version = ['py310']
 [tool.isort]
 profile = "black"
 multi_line_output = 3
-line_length = 88
+line-length = 88
 
 [tool.ruff]
 line-length = 88
-select = ["E", "F", "W", "I", "N", "D"]
-ignore = ["E501"]  # Ignore line length violations
+target-version = "py39"
+select = ["E", "F", "I", "N", "W", "B", "UP", "C"]
+ignore = [
+    "E402",  # Module level import not at top of file
+    "F821",  # Undefined name (for alembic context)
+]
+fixable = ["I001", "F401"]  # Sort imports and remove unused imports
+exclude = [
+    ".git",
+    ".ruff_cache",
+    ".venv",
+    "venv",
+    "__pycache__",
+    "migrations",
+    "alembic",
+]
+
+[tool.ruff.per-file-ignores]
+"__init__.py" = ["F401"]  # Ignore unused imports in __init__.py files
+"alembic/env.py" = ["E402"]  # Allow imports after sys.path modification
+
+[tool.poetry]
+name = "coin-prelisting-analyst"
+version = "0.1.0"
+description = "Cryptocurrency pre-listing analysis platform"
+authors = ["Your Name <your.email@example.com>"]
+
+[tool.poetry.dependencies]
+python = "^3.9"
+alembic = "^1.13.1"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.pytest.ini_options]
+pythonpath = [
+    "."
+]

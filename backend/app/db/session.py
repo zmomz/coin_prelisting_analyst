@@ -2,7 +2,12 @@ from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 from app.core.config import settings
 
-engine = create_async_engine(settings.DATABASE_URL, echo=False, future=True)
+# Ensure correct async connection settings
+engine = create_async_engine(
+    settings.DATABASE_URL,
+    echo=True,  # ✅ Logs SQL queries to help debug
+    future=True
+)
 
 AsyncSessionLocal = sessionmaker(
     bind=engine,
@@ -10,7 +15,15 @@ AsyncSessionLocal = sessionmaker(
     expire_on_commit=False
 )
 
-# Dependency for FastAPI endpoints
+
+# ✅ Fix: Ensure sessions are properly closed
 async def get_db():
     async with AsyncSessionLocal() as session:
-        yield session
+        try:
+            yield session
+        except Exception as e:
+            print(f"🚨 Database Error: {e}")
+            await session.rollback()
+            raise
+        finally:
+            await session.close()

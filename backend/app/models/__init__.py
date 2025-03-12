@@ -1,8 +1,11 @@
 # app/models/__init__.py
 
-from app.models.coin import Coin
-from app.models.metric import Metric
-from app.models.score import Score
-from app.models.suggestion import Suggestion
-from app.models.user import User
-from app.models.user_activity import UserActivity
+"""Models package for database entities."""
+
+from .user import User, UserRole  # noqa
+from .coin import Coin  # noqa
+from .metric import Metric  # noqa
+from .scoring_weight import ScoringWeight  # noqa
+from .score import Score  # noqa
+from .suggestion import Suggestion, SuggestionStatus  # noqa
+from .user_activity import UserActivity  # noqa

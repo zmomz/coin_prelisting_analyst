@@ -3,6 +3,7 @@ from typing import List
 from pydantic import AnyHttpUrl, validator
 from pydantic_settings import BaseSettings
 
+
 class Settings(BaseSettings):
     PROJECT_NAME: str = "coin prelisting analyst"
     API_V1_STR: str = "/api/v1"

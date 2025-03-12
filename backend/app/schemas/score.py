@@ -1,29 +1,45 @@
-import uuid
+from pydantic import BaseModel, UUID4, Field
 from datetime import datetime
-from typing import Optional, Dict, Any
-from pydantic import BaseModel
 
 
 class ScoreBase(BaseModel):
-    total_score: float
-    details: Optional[Dict[str, Any]] = None  # Breakdown of score components
+    liquidity_score: float = Field(..., ge=0.0, le=1.0)
+    developer_score: float = Field(..., ge=0.0, le=1.0)
+    community_score: float = Field(..., ge=0.0, le=1.0)
+    market_score: float = Field(..., ge=0.0, le=1.0)
+    final_score: float = Field(..., ge=0.0, le=1.0)
 
 
-class ScoreCreate(ScoreBase):
-    coin_id: uuid.UUID
+# ✅ Input schema for creating a new Score
+class ScoreIn(ScoreBase):
+    coin_id: UUID4
+    scoring_weight_id: UUID4
 
 
-class ScoreUpdate(BaseModel):
-    total_score: Optional[float] = None
-    details: Optional[Dict[str, Any]] = None
+# ✅ Input schema for updating an existing Score
+class ScoreUpdate(ScoreBase):
+    pass
 
 
-class ScoreOut(ScoreBase):
-    id: uuid.UUID
-    coin_id: uuid.UUID
-    is_active: bool
-    calculated_at: datetime
+# ✅ Schema for database representation (includes ID and timestamps)
+class ScoreInDB(ScoreBase):
+    id: UUID4
+    coin_id: UUID4
+    scoring_weight_id: UUID4
     created_at: datetime
 
     class Config:
-        orm_mode = True
+        from_attributes = True
+
+
+# ✅ Output schema for returning Score in API responses
+class ScoreOut(ScoreInDB):
+    pass
+
+
+class ScoreMetrics(BaseModel):
+    market_cap: float
+    volume_24h: float
+    github_activity: float
+    twitter_sentiment: float
+    reddit_sentiment: float

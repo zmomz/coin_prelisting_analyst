@@ -1,8 +1,9 @@
-import uuid
-from sqlalchemy import Column, ForeignKey, Float, DateTime, Boolean, JSON
-from sqlalchemy.dialects.postgresql import UUID
-from datetime import datetime
+from sqlalchemy import Column, ForeignKey, Float, DateTime
+from sqlalchemy.orm import relationship
 from app.db.base import Base
+from datetime import datetime
+import uuid
+from sqlalchemy.dialects.postgresql import UUID
 
 
 class Score(Base):
@@ -10,10 +11,17 @@ class Score(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
     coin_id = Column(UUID(as_uuid=True), ForeignKey("coins.id", ondelete="CASCADE"), nullable=False)
+    scoring_weight_id = Column(UUID(as_uuid=True), ForeignKey("scoring_weights.id", ondelete="CASCADE"), nullable=False)
 
-    total_score = Column(Float, nullable=False)
-    details = Column(JSON, nullable=True)  # To store breakdown of how the score was calculated
+    # 📌 Scoring components
+    liquidity_score = Column(Float, nullable=False)
+    developer_score = Column(Float, nullable=False)
+    community_score = Column(Float, nullable=False)
+    market_score = Column(Float, nullable=False)
+    final_score = Column(Float, nullable=False)
 
-    calculated_at = Column(DateTime, default=datetime.utcnow)
-    is_active = Column(Boolean, default=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    # Relationships
+    coin = relationship("Coin", back_populates="scores")
+    scoring_weight = relationship("ScoringWeight", back_populates="scores")  # ✅ Fixed reference
+
+    created_at = Column(DateTime, default=datetime.now())

@@ -1,25 +1,33 @@
 import uuid
 from datetime import datetime
 from typing import Optional
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 
 class CoinBase(BaseModel):
     name: str
     symbol: str
     description: Optional[str] = None
-    github: Optional[str] = None  
+    github: Optional[str] = None
+
+    model_config = ConfigDict(from_attributes=True)
 
 
 class CoinCreate(CoinBase):
-    pass
+    name: str
+    symbol: str
+    description: Optional[str] = None
+    github: Optional[str] = None
+    id: uuid.UUID = uuid.uuid4()  # ✅ Auto-generate ID if needed
+    is_active: bool = True  # ✅ Default active state
+    created_at: datetime = datetime.now()  # ✅ Default timestamp
 
 
 class CoinUpdate(BaseModel):
-    name: Optional[str] = None
-    symbol: Optional[str] = None
-    description: Optional[str] = None
-    github: Optional[str] = None
+    name: Optional[str]
+    symbol: Optional[str]
+    description: Optional[str]
+    github: Optional[str]
 
 
 class CoinOut(CoinBase):
@@ -28,4 +36,4 @@ class CoinOut(CoinBase):
     created_at: datetime
 
     class Config:
-        orm_mode = True
+        from_attributes = True

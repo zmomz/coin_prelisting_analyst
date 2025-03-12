@@ -1,12 +1,14 @@
 import uuid
 from datetime import datetime
 from typing import Optional
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from app.models.suggestion import SuggestionStatus
 
 
 class SuggestionBase(BaseModel):
     note: Optional[str] = None
+
+    model_config = ConfigDict(from_attributes=True)
 
 
 class SuggestionCreate(SuggestionBase):
@@ -28,4 +30,4 @@ class SuggestionOut(SuggestionBase):
     updated_at: datetime
 
     class Config:
-        orm_mode = True
+        from_attributes = True

@@ -1,24 +1,27 @@
+"""API endpoints for managing user accounts."""
+
 import uuid
-from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List
 
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.api.deps import get_current_manager
+from app.crud.users import delete_user, get_user, get_users, update_user
 from app.db.session import get_db
 from app.models.user import User
-from app.crud.users import get_user, get_users, update_user, delete_user
-from app.schemas.user import UserUpdate, UserOut
-from app.api.deps import get_current_user, get_current_manager
+from app.schemas.user import UserOut, UserUpdate
 
-router = APIRouter()
+router = APIRouter(prefix="/users")
 
 
 @router.get("/{user_id}", response_model=UserOut)
 async def get_user_endpoint(
     user_id: uuid.UUID, 
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_manager)
+    _: User = Depends(get_current_manager)
 ):
-    """Managers can retrieve user details."""
+    """Retrieve user details (manager only)."""
     user = await get_user(db, user_id)
     if not user:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
@@ -27,12 +30,12 @@ async def get_user_endpoint(
 
 @router.get("/", response_model=List[UserOut])
 async def get_users_endpoint(
-    db: AsyncSession = Depends(get_db), 
-    current_user: User = Depends(get_current_manager),
-    skip: int = 0, 
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(get_current_manager),
+    skip: int = 0,
     limit: int = 100
 ):
-    """Managers can list all users."""
+    """List all users (manager only)."""
     return await get_users(db, skip, limit)
 
 
@@ -41,13 +44,13 @@ async def update_user_endpoint(
     user_id: uuid.UUID,
     user_in: UserUpdate,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_manager),
+    _: User = Depends(get_current_manager),
 ):
-    """Managers can update user details."""
+    """Update user details (manager only)."""
     user = await get_user(db, user_id)
     if not user:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
-    
+
     return await update_user(db, user, user_in)
 
 
@@ -55,9 +58,9 @@ async def update_user_endpoint(
 async def delete_user_endpoint(
     user_id: uuid.UUID, 
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_manager)
+    _: User = Depends(get_current_manager)
 ):
-    """Managers can soft delete users."""
+    """Soft delete a user (manager only)."""
     user = await get_user(db, user_id)
     if not user:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")

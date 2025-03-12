@@ -3,6 +3,7 @@ from sqlalchemy import Column, String, Boolean, DateTime
 from sqlalchemy.dialects.postgresql import UUID
 from datetime import datetime
 from app.db.base import Base
+from sqlalchemy.orm import relationship
 
 
 class Coin(Base):
@@ -13,5 +14,12 @@ class Coin(Base):
     symbol = Column(String, nullable=False, unique=True, index=True)
     description = Column(String, nullable=True)
     github = Column(String, nullable=True)
-    is_active = Column(Boolean, default=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    x = Column(String, nullable=True)
+    reddit = Column(String, nullable=True)
+    telegram = Column(String, nullable=True)
+    website = Column(String, nullable=True)
+    is_active = Column(Boolean, default=True, nullable=True)
+    created_at = Column(DateTime, default=datetime.now())
+
+    # Relationships
+    scores = relationship("Score", back_populates="coin", cascade="all, delete-orphan")

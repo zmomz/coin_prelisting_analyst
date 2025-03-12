@@ -1,30 +1,33 @@
+"""API endpoints for managing coin listing suggestions from analysts."""
+
 import uuid
-from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List
 
-from app.db.session import get_db
-from app.models.user import User
-from app.models.suggestion import SuggestionStatus
-from app.crud.suggestions import (
-    create_suggestion, 
-    get_suggestion, 
-    get_suggestions, 
-    update_suggestion, 
-    approve_suggestion, 
-    reject_suggestion, 
-    delete_suggestion
-)
-from app.schemas.suggestion import SuggestionCreate, SuggestionUpdate, SuggestionOut
-from app.api.deps import get_current_user, get_current_manager
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy.ext.asyncio import AsyncSession
 
-router = APIRouter()
+from app.api.deps import get_current_manager, get_current_user
+from app.crud.suggestions import (
+    approve_suggestion,
+    create_suggestion,
+    delete_suggestion,
+    get_suggestion,
+    get_suggestions,
+    reject_suggestion,
+    update_suggestion,
+)
+from app.db.session import get_db
+from app.models.suggestion import SuggestionStatus
+from app.models.user import User
+from app.schemas.suggestion import SuggestionCreate, SuggestionOut, SuggestionUpdate
+
+router = APIRouter(prefix="/suggestions")
 
 
 @router.post("/", response_model=SuggestionOut)
 async def create_suggestion_endpoint(
-    suggestion_in: SuggestionCreate, 
-    db: AsyncSession = Depends(get_db), 
+    suggestion_in: SuggestionCreate,
+    db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
     """Analysts can create coin listing suggestions."""
@@ -49,8 +52,8 @@ async def get_suggestions_endpoint(db: AsyncSession = Depends(get_db), skip: int
 @router.put("/{suggestion_id}", response_model=SuggestionOut)
 async def update_suggestion_endpoint(
     suggestion_id: uuid.UUID, 
-    suggestion_in: SuggestionUpdate, 
-    db: AsyncSession = Depends(get_db), 
+    suggestion_in: SuggestionUpdate,
+    db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
     """Analysts can update their own suggestions before approval/rejection."""
@@ -67,10 +70,10 @@ async def update_suggestion_endpoint(
 @router.post("/{suggestion_id}/approve")
 async def approve_suggestion_endpoint(
     suggestion_id: uuid.UUID, 
-    db: AsyncSession = Depends(get_db), 
-    current_user: User = Depends(get_current_manager)
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(get_current_manager)
 ):
-    """Managers can approve suggestions."""
+    """Approve a pending suggestion (manager only)."""
     suggestion = await get_suggestion(db, suggestion_id)
     if not suggestion:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Suggestion not found")
@@ -85,10 +88,10 @@ async def approve_suggestion_endpoint(
 @router.post("/{suggestion_id}/reject")
 async def reject_suggestion_endpoint(
     suggestion_id: uuid.UUID, 
-    db: AsyncSession = Depends(get_db), 
-    current_user: User = Depends(get_current_manager)
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(get_current_manager)
 ):
-    """Managers can reject suggestions."""
+    """Reject a pending suggestion (manager only)."""
     suggestion = await get_suggestion(db, suggestion_id)
     if not suggestion:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Suggestion not found")
@@ -103,10 +106,10 @@ async def reject_suggestion_endpoint(
 @router.delete("/{suggestion_id}")
 async def delete_suggestion_endpoint(
     suggestion_id: uuid.UUID, 
-    db: AsyncSession = Depends(get_db), 
-    current_user: User = Depends(get_current_manager)
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(get_current_manager)
 ):
-    """Managers can soft delete suggestions."""
+    """Soft delete a suggestion (manager only)."""
     suggestion = await get_suggestion(db, suggestion_id)
     if not suggestion:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Suggestion not found")

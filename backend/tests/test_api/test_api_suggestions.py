@@ -1,36 +1,69 @@
 import pytest
-from fastapi.testclient import TestClient
-from sqlalchemy.ext.asyncio import AsyncSession
-from app.crud.suggestions import create_suggestion
-from app.schemas.suggestion import SuggestionCreate
 import uuid
+from httpx import AsyncClient
+from app.models.suggestion import SuggestionStatus
+from app.core.config import settings
 
 
-@pytest.mark.asyncio
-async def test_create_suggestion(client: TestClient, db_session: AsyncSession, test_user):
-    """Test creating a new suggestion (only Analysts can create)."""
-    response = client.post(
-        "/api/v1/suggestions/",
-        json={"coin_id": str(uuid.uuid4()), "note": "Consider listing this coin"},
-        headers={"Authorization": f"Bearer {test_user.role == 'analyst'}"}
+@pytest.mark.asyncio(loop_scope="session")
+async def test_create_suggestion(authenticated_client: AsyncClient, test_coin):
+    """Test creating a new suggestion."""
+    response = await authenticated_client.post(
+        f"{settings.API_V1_STR}/suggestions/",
+        json={
+            "coin_id": str(test_coin.id),
+            "note": "This is a test suggestion",  # 🔹 Changed from "title" to "note"
+        }
     )
-    assert response.status_code in [200, 403]  # Expecting success for analysts, forbidden for others
-
-
-@pytest.mark.asyncio
-async def test_get_suggestion(client: TestClient, db_session: AsyncSession):
-    """Test retrieving a specific suggestion."""
-    suggestion = await create_suggestion(
-        db_session, SuggestionCreate(coin_id=uuid.uuid4(), note="Great project"), user_id=uuid.uuid4()
-    )
-    response = client.get(f"/api/v1/suggestions/{suggestion.id}")
     assert response.status_code == 200
-    assert response.json()["note"] == "Great project"
+    data = response.json()
+    assert data["coin_id"] == str(test_coin.id)
+    assert data["note"] == "This is a test suggestion"  # 🔹 Updated check
 
 
-@pytest.mark.asyncio
-async def test_list_suggestions(client: TestClient, db_session: AsyncSession):
+@pytest.mark.asyncio(loop_scope="session")
+async def test_get_suggestion(authenticated_client: AsyncClient, test_suggestion):
+    """Test retrieving a suggestion by ID."""
+    response = await authenticated_client.get(
+        f"{settings.API_V1_STR}/suggestions/{test_suggestion.id}"
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["id"] == str(test_suggestion.id)
+    assert data["coin_id"] == str(test_suggestion.coin_id)
+    assert data["note"] == test_suggestion.note  # 🔹 Updated check
+
+
+@pytest.mark.asyncio(loop_scope="session")
+async def test_get_suggestions(authenticated_client: AsyncClient, test_suggestion):
     """Test listing all suggestions."""
-    response = client.get("/api/v1/suggestions/")
+    response = await authenticated_client.get(f"{settings.API_V1_STR}/suggestions/")
     assert response.status_code == 200
-    assert isinstance(response.json(), list)
+    data = response.json()
+    assert isinstance(data, list)
+    assert any(s["id"] == str(test_suggestion.id) for s in data)  # 🔹 Fixed list check
+
+
+@pytest.mark.asyncio(loop_scope="session")
+async def test_update_suggestion(authenticated_client: AsyncClient, test_suggestion):
+    """Test updating a suggestion."""
+    response = await authenticated_client.put(
+        f"{settings.API_V1_STR}/suggestions/{test_suggestion.id}",
+        json={
+            "note": "Updated test suggestion",  # 🔹 Changed from "title" to "note"
+            "status": "approved"
+        }
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["note"] == "Updated test suggestion"  # 🔹 Updated check
+    assert data["status"] == SuggestionStatus.APPROVED.value
+
+
+@pytest.mark.asyncio(loop_scope="session")
+async def test_delete_suggestion(manager_client: AsyncClient, test_suggestion):
+    """Test deleting a suggestion."""
+    response = await manager_client.delete(
+        f"{settings.API_V1_STR}/suggestions/{test_suggestion.id}"
+    )
+    assert response.status_code == 200  # 🔹 Check for successful deletion

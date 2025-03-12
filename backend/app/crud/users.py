@@ -1,4 +1,3 @@
-import uuid
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from typing import List, Optional
@@ -9,24 +8,38 @@ from app.core.security import get_password_hash
 
 
 async def create_user(db: AsyncSession, user_in: UserCreate) -> User:
-    hashed_password = get_password_hash(user_in.password)
-    user = User(
-        email=user_in.email,
-        hashed_password=hashed_password,
-        name=user_in.name,
-        role=user_in.role,
-    )
-    db.add(user)
-    await db.commit()
-    await db.refresh(user)
-    return user
+    """Create a new user in the database."""
+    from app.core.security import get_password_hash
+
+    try:
+        hashed_password = get_password_hash(user_in.password)
+        print(f"🔑 Hashed Password: {hashed_password}")  # Debug Log
+
+        user = User(
+            email=user_in.email,
+            hashed_password=hashed_password,
+            name=user_in.name,
+            role=user_in.role,
+            is_active=True,
+        )
+        db.add(user)
+        await db.commit()
+        await db.refresh(user)
+
+        print(f"✅ DEBUG: User Created: {user.email}, Role: {user.role}")
+        return user
+
+    except Exception as e:
+        print(f"🚨 ERROR: Failed to create user: {str(e)}")
+        raise
 
 
-async def get_user(db: AsyncSession, user_id: uuid.UUID) -> Optional[User]:
-    result = await db.execute(
-        select(User).where(User.id == user_id, User.is_active == True)
-    )
-    return result.scalar_one_or_none()
+async def get_user(db: AsyncSession, user_id):
+    async with db.begin():  # ✅ Ensure session is active
+        result = await db.execute(
+            select(User).where(User.id == user_id, User.is_active == True)
+        )
+        return result.scalars().first()
 
 
 async def get_user_by_email(db: AsyncSession, email: str) -> Optional[User]:
