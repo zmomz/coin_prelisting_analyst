@@ -2,7 +2,7 @@ import uuid
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import text
 from app.celery_app import celery_app
-from app.db.session import AsyncSessionLocal
+from app.db.session import AsyncSessionLocalMain
 from app.utils.api_clients.coingecko import fetch_coin_market_data
 from app.crud.coins import get_coin_by_symbol
 from app.crud.metrics import create_metric
@@ -12,7 +12,7 @@ from app.schemas.metric import MetricCreate, MetricValueSchema
 @celery_app.task(name="fetch_coin_data")
 async def fetch_coin_data():
     """Fetches market data for all tracked coins and stores metrics."""
-    async with AsyncSessionLocal() as db:
+    async with AsyncSessionLocalMain() as db:
         coins = await db.execute(text("SELECT id, symbol FROM coins WHERE is_active = true"))
         coins = coins.fetchall()
 

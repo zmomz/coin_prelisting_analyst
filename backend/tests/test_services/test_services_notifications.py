@@ -1,6 +1,5 @@
 import pytest
 from app.services.notifications import send_slack_notification
-from httpx import AsyncClient
 from unittest.mock import AsyncMock, patch
 
 

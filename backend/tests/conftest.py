@@ -9,11 +9,11 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy import delete
 from httpx import AsyncClient
 from contextlib import asynccontextmanager
-from app.db.session import AsyncSessionLocal
+from app.db.session import AsyncSessionLocalTest
 from datetime import datetime
 
 from app.db.base import Base
-from app.db.session import get_db
+from app.db.session import get_db_test
 from app.main import app
 from app.core.security import create_access_token
 from app.core.config import settings
@@ -82,7 +82,7 @@ def event_loop():
 @pytest.fixture(scope="function")
 async def db_session():
     """Creates a fresh database session per test."""
-    async with AsyncSessionLocal() as session:
+    async with AsyncSessionLocalTest() as session:
         try:
             yield session
         except Exception as e:
@@ -92,15 +92,15 @@ async def db_session():
             await session.close()  # ✅ Ensure session is closed properly
 
 
-# ✅ Override FastAPI's `get_db` once for all tests
+# ✅ Override FastAPI's `get_db_test` once for all tests
 @pytest.fixture(scope="session")
-async def override_get_db():
-    """Override FastAPI's `get_db` dependency with test session."""
+async def override_get_db_test():
+    """Override FastAPI's `get_db_test` dependency with test session."""
     async def _get_test_db():
-        async with AsyncSessionLocal() as session:
+        async with AsyncSessionLocalTest() as session:
             yield session
 
-    app.dependency_overrides[get_db] = _get_test_db
+    app.dependency_overrides[get_db_test] = _get_test_db
     yield
     app.dependency_overrides.clear()
 

@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_manager
 from app.crud.users import delete_user, get_user, get_users, update_user
-from app.db.session import get_db
+from app.db.session import get_db_main
 from app.models.user import User
 from app.schemas.user import UserOut, UserUpdate
 
@@ -18,7 +18,7 @@ router = APIRouter(prefix="/users")
 @router.get("/{user_id}", response_model=UserOut)
 async def get_user_endpoint(
     user_id: uuid.UUID, 
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db_main),
     _: User = Depends(get_current_manager)
 ):
     """Retrieve user details (manager only)."""
@@ -30,7 +30,7 @@ async def get_user_endpoint(
 
 @router.get("/", response_model=List[UserOut])
 async def get_users_endpoint(
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db_main),
     _: User = Depends(get_current_manager),
     skip: int = 0,
     limit: int = 100
@@ -43,7 +43,7 @@ async def get_users_endpoint(
 async def update_user_endpoint(
     user_id: uuid.UUID,
     user_in: UserUpdate,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db_main),
     _: User = Depends(get_current_manager),
 ):
     """Update user details (manager only)."""
@@ -57,7 +57,7 @@ async def update_user_endpoint(
 @router.delete("/{user_id}")
 async def delete_user_endpoint(
     user_id: uuid.UUID, 
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db_main),
     _: User = Depends(get_current_manager)
 ):
     """Soft delete a user (manager only)."""

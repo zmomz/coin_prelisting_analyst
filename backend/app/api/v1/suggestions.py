@@ -16,7 +16,7 @@ from app.crud.suggestions import (
     reject_suggestion,
     update_suggestion,
 )
-from app.db.session import get_db
+from app.db.session import get_db_main
 from app.models.suggestion import SuggestionStatus
 from app.models.user import User
 from app.schemas.suggestion import SuggestionCreate, SuggestionOut, SuggestionUpdate
@@ -27,7 +27,7 @@ router = APIRouter(prefix="/suggestions")
 @router.post("/", response_model=SuggestionOut)
 async def create_suggestion_endpoint(
     suggestion_in: SuggestionCreate,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db_main),
     current_user: User = Depends(get_current_user)
 ):
     """Analysts can create coin listing suggestions."""
@@ -35,7 +35,7 @@ async def create_suggestion_endpoint(
 
 
 @router.get("/{suggestion_id}", response_model=SuggestionOut)
-async def get_suggestion_endpoint(suggestion_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
+async def get_suggestion_endpoint(suggestion_id: uuid.UUID, db: AsyncSession = Depends(get_db_main)):
     """Retrieve a specific suggestion by ID."""
     suggestion = await get_suggestion(db, suggestion_id)
     if not suggestion:
@@ -44,7 +44,7 @@ async def get_suggestion_endpoint(suggestion_id: uuid.UUID, db: AsyncSession = D
 
 
 @router.get("/", response_model=List[SuggestionOut])
-async def get_suggestions_endpoint(db: AsyncSession = Depends(get_db), skip: int = 0, limit: int = 100):
+async def get_suggestions_endpoint(db: AsyncSession = Depends(get_db_main), skip: int = 0, limit: int = 100):
     """List all suggestions with pagination."""
     return await get_suggestions(db, skip, limit)
 
@@ -53,7 +53,7 @@ async def get_suggestions_endpoint(db: AsyncSession = Depends(get_db), skip: int
 async def update_suggestion_endpoint(
     suggestion_id: uuid.UUID, 
     suggestion_in: SuggestionUpdate,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db_main),
     current_user: User = Depends(get_current_user)
 ):
     """Analysts can update their own suggestions before approval/rejection."""
@@ -70,7 +70,7 @@ async def update_suggestion_endpoint(
 @router.post("/{suggestion_id}/approve")
 async def approve_suggestion_endpoint(
     suggestion_id: uuid.UUID, 
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db_main),
     _: User = Depends(get_current_manager)
 ):
     """Approve a pending suggestion (manager only)."""
@@ -88,7 +88,7 @@ async def approve_suggestion_endpoint(
 @router.post("/{suggestion_id}/reject")
 async def reject_suggestion_endpoint(
     suggestion_id: uuid.UUID, 
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db_main),
     _: User = Depends(get_current_manager)
 ):
     """Reject a pending suggestion (manager only)."""
@@ -106,7 +106,7 @@ async def reject_suggestion_endpoint(
 @router.delete("/{suggestion_id}")
 async def delete_suggestion_endpoint(
     suggestion_id: uuid.UUID, 
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db_main),
     _: User = Depends(get_current_manager)
 ):
     """Soft delete a suggestion (manager only)."""

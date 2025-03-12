@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.crud.users import get_user
-from app.db.session import get_db
+from app.db.session import get_db_main
 from app.models.user import User, UserRole
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl=f"{settings.API_V1_STR}/auth/login")
@@ -19,7 +19,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 async def get_current_user(
-    db: AsyncSession = Depends(get_db), token: str = Depends(oauth2_scheme)
+    db: AsyncSession = Depends(get_db_main), token: str = Depends(oauth2_scheme)
 ) -> User:
     """Get the currently authenticated user from JWT token."""
     credentials_exception = HTTPException(

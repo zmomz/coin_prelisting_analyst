@@ -2,7 +2,6 @@ import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 from unittest.mock import AsyncMock, patch
 from app.tasks.coin_data import fetch_coin_data
-from app.utils.api_clients.coingecko import fetch_coin_market_data
 
 
 @pytest.mark.asyncio(loop_scope="session")
