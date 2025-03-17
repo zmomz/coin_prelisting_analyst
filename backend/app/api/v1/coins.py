@@ -12,7 +12,7 @@ from app.db.session import get_db
 from app.models.user import User
 from app.schemas.coin import CoinCreate, CoinOut, CoinUpdate
 
-router = APIRouter(prefix="/coins", tags=["Coins"])
+router = APIRouter(prefix="/coins", tags=["coins"])
 
 
 @router.post("/", response_model=CoinOut, status_code=status.HTTP_201_CREATED)

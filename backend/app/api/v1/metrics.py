@@ -5,7 +5,7 @@ from app.db.session import get_db
 from app.schemas.metric import MetricResponseSchema
 from app.crud.metrics import get_metric_by_id, get_metrics_by_coin
 
-router = APIRouter(prefix="/metrics", tags=["Metrics"])
+router = APIRouter(prefix="/metrics", tags=["metrics"])
 
 
 @router.get("/{metric_id}", response_model=MetricResponseSchema)
