@@ -21,8 +21,8 @@ async def get_score_by_coin(db: AsyncSession, coin_id: uuid.UUID) -> Optional[Sc
     """Retrieve the latest active score for a given coin."""
     result = await db.execute(
         select(Score)
-        .where(Score.coin_id == coin_id, Score.is_active == True)
-        .order_by(Score.calculated_at.desc())
+        .where(Score.coin_id == coin_id)
+        .order_by(Score.created_at.desc())
         .limit(1)
     )
     score = result.scalar_one_or_none()

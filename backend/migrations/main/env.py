@@ -42,7 +42,7 @@ target_metadata = Base.metadata
 # can be acquired:
 # my_important_option = config.get_main_option("my_important_option")
 # ... etc.
-print("🔍 Alembic is connecting to:", context.config.get_main_option("sqlalchemy.url"))
+print("🔍 Alembic is connecting to: MAIN DB")
 
 def run_migrations_offline() -> None:
     """Run migrations in 'offline' mode."""

@@ -1,5 +1,5 @@
 from passlib.context import CryptContext
-from jose import jwt, JWTError
+from jose import jwt
 from datetime import datetime, timedelta
 from app.core.config import settings
 import uuid
@@ -14,13 +14,11 @@ def create_access_token(data: dict | str | uuid.UUID, expires_delta: int = None)
     else:
         to_encode = data.copy()
 
-    # Ensure `expires_delta` is an integer (in minutes)
-    if expires_delta is None:
-        expires_delta = settings.ACCESS_TOKEN_EXPIRE_MINUTES
+    expires_delta = settings.ACCESS_TOKEN_EXPIRE_MINUTES if expires_delta is None else expires_delta
     if isinstance(expires_delta, timedelta):
-        expires_delta = int(expires_delta.total_seconds() / 60)  # Convert to minutes
+        expires_delta = int(expires_delta.total_seconds() / 60)
 
-    expire = datetime.utcnow() + timedelta(minutes=expires_delta)
+    expire = datetime.now() + timedelta(minutes=expires_delta)
     to_encode.update({"exp": expire})
 
     return jwt.encode(to_encode, settings.SECRET_KEY, algorithm="HS256")

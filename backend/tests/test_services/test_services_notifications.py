@@ -1,17 +1,31 @@
 import pytest
 from app.services.notifications import send_slack_notification
-from unittest.mock import AsyncMock, patch
+import respx
+from httpx import Response
+from app.core.config import settings
 
-
+URL = settings.SLACK_WEBHOOK_URL
 @pytest.mark.asyncio(loop_scope="session")
-@patch("app.services.notifications.httpx.AsyncClient.post",
-       new_callable=AsyncMock)
-async def test_send_slack_notification(mock_post):
-    """Test sending a Slack notification."""
-    mock_post.return_value.status_code = 200
+@respx.mock
+async def test_send_slack_notification_success():
+    """
+    Test the function with a real `httpx.AsyncClient`
+    but mock Slack's endpoint so we don't make a real request.
+    """
 
-    await send_slack_notification("Test message")
+    # 1) check if the url is actually good.
+    assert "hooks.slack.com" in URL, "Expected a Slack URL"
 
-    mock_post.assert_called_once()
-    args, kwargs = mock_post.call_args
-    assert kwargs["json"] == {"text": "Test message"}
+    # 2) Setup a fake Slack route that returns 200 OK.
+    #    "hooks.slack.com" is in the function's check.
+    slack_route = respx.post(URL).mock(
+        return_value=Response(200, content=b"OK")
+    )
+
+    # 3) Call the real function—no big patches here
+    result = await send_slack_notification("Test message")
+
+    # 4) Assertions
+    assert slack_route.called, "Expected Slack route to be called."
+    assert result == "Notification sent successfully"
+

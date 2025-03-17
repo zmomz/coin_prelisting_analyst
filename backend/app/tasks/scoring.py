@@ -1,17 +1,25 @@
+import asyncio
+import logging
 from app.celery_app import celery_app
-from app.db.session import AsyncSessionLocalMain
-from app.services.scoring import update_coin_score
-from app.services.analytics import get_latest_metrics
-from app.crud.coins import get_coins
+from app.db.session import AsyncSessionLocal
+from app.services.scoring import recalculate_scores_service
+
+logger = logging.getLogger(__name__)
 
 
-@celery_app.task(name="recalculate_scores")
-async def recalculate_scores():
-    """Recalculates scores for all active coins."""
-    async with AsyncSessionLocalMain() as db:
-        coins = await get_coins(db)
+@celery_app.task(name="app.tasks.scoring.recalculate_scores")
+def recalculate_scores():
+    """Celery-compatible wrapper for async function."""
+    asyncio.run(recalculate_scores_async())
 
-        for coin in coins:
-            metrics = await get_latest_metrics(db, coin.id)
-            if metrics:
-                await update_coin_score(db, coin.id, metrics)
+
+async def recalculate_scores_async():
+    """Async function to recalculate scores."""
+    async with AsyncSessionLocal() as db:
+        logger.info("Recalculating scores...")
+        result = await recalculate_scores_service(db)
+
+        if not result["success"]:
+            logger.error(f"Score recalculation failed: {result['error']}")
+        else:
+            logger.info(f"Score recalculation complete. Updated {result['updated_scores']} scores.")

@@ -1,7 +1,7 @@
 services:
   app:
     build: .
-    container_name: backend
+    container_name: app
     restart: always
     env_file: .env
     depends_on:
@@ -9,6 +9,10 @@ services:
       - redis
     ports:
       - "8000:8000"
+    volumes:
+      - .:/app  # Mount local source code for live updates
+      - /app/__pycache__/  # Ignore Python cache
+    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
 
   db:
     image: postgres:15
@@ -39,7 +43,10 @@ services:
     depends_on:
       - app
       - redis
-    command: ["celery", "-A", "app.celery_app", "worker", "--loglevel=info"]
+    volumes:
+      - .:/app    # Mount local code for live updates
+    working_dir: /app
+    command: ["celery", "-A", "app.celery_app", "worker", "--loglevel=info", "-P", "gevent"]
 
   celery_beat:
     build: .
@@ -48,6 +55,9 @@ services:
     env_file: .env
     depends_on:
       - celery_worker
+      - redis
+    volumes:
+      - .:/app  # Mount local code for live updates
     command: ["celery", "-A", "app.celery_app", "beat", "--loglevel=info"]
 
   healthcheck:

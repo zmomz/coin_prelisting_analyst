@@ -9,17 +9,18 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.crud.users import get_user
-from app.db.session import get_db_main
+from app.db.session import get_db
 from app.models.user import User, UserRole
+import logging
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl=f"{settings.API_V1_STR}/auth/login")
 
 
-import logging
 logger = logging.getLogger(__name__)
 
+
 async def get_current_user(
-    db: AsyncSession = Depends(get_db_main), token: str = Depends(oauth2_scheme)
+    db: AsyncSession = Depends(get_db), token: str = Depends(oauth2_scheme)
 ) -> User:
     """Get the currently authenticated user from JWT token."""
     credentials_exception = HTTPException(
@@ -33,11 +34,13 @@ async def get_current_user(
 
     try:
         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=["HS256"])
+        print("🔍 Decoded Token Payload:", payload)
         user_id: str = payload.get("sub")
         if user_id is None:
             logger.error("🚨 JWT Decoding Failed: No user_id found in token")
             raise credentials_exception
     except JWTError:
+        print("🚨 JWT Decoding Failed!")
         logger.error("🚨 JWT Decoding Failed: Invalid Token")
         raise credentials_exception
     except Exception as e:

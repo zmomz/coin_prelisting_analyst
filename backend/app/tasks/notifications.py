@@ -1,22 +1,38 @@
+import asyncio
+import logging
+from sqlalchemy import select
 from app.celery_app import celery_app
-from app.db.session import AsyncSessionLocalMain
+from app.db.session import AsyncSessionLocal
 from app.services.notifications import send_slack_notification
-from app.crud.suggestions import get_suggestions
-from app.models.suggestion import SuggestionStatus
+from app.models.suggestion import Suggestion, SuggestionStatus
+from sqlalchemy.orm import sessionmaker, Session
+
+logger = logging.getLogger(__name__)
 
 
-@celery_app.task(name="notify_pending_suggestions")
-async def notify_pending_suggestions():
-    """Sends a Slack notification for pending suggestions."""
-    async with AsyncSessionLocalMain() as db:
-        suggestions = await get_suggestions(db)
+@celery_app.task(name="app.tasks.notifications.notify_pending_suggestions")
+def notify_pending_suggestions(session_maker: sessionmaker[Session] = AsyncSessionLocal):
+    """Entrypoint for Celery to run the async logic."""
+    asyncio.run(notify_pending_suggestions_async(session_maker))
 
-        pending_suggestions = [
-            s for s in suggestions if s.status == SuggestionStatus.PENDING
-        ]
 
-        if pending_suggestions:
-            message = f"""🔔 There are {len(pending_suggestions)}
-                        pending suggestions for review.
-                        {pending_suggestions}"""
+async def notify_pending_suggestions_async(session_maker: sessionmaker[Session]):
+    """Check for pending suggestions and send Slack alert if any exist."""
+    async with session_maker() as db:
+        # Fetch number of pending suggestions
+        pending_count = await _count_pending_suggestions(db)
+
+        if pending_count > 0:
+            message = f"🔔 {pending_count} pending suggestions need review."
+            logger.info("Sending Slack notification...")
             await send_slack_notification(message)
+        else:
+            logger.info("No pending suggestions found; Slack notification skipped.")
+
+
+async def _count_pending_suggestions(db):
+    """Helper that returns how many suggestions have status == PENDING."""
+    stmt = select(Suggestion).where(Suggestion.status == SuggestionStatus.PENDING)
+    results = await db.execute(stmt)
+    pending_suggestions = results.scalars().all()
+    return len(pending_suggestions)

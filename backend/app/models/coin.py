@@ -10,8 +10,9 @@ class Coin(Base):
     __tablename__ = "coins"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
-    name = Column(String, nullable=False)
-    symbol = Column(String, nullable=False, unique=True, index=True)
+    name = Column(String, nullable=False, index=True)
+    symbol = Column(String, nullable=False, index=True)
+    coingeckoid = Column(String, unique=True, nullable=False, index=True)
     description = Column(String, nullable=True)
     github = Column(String, nullable=True)
     x = Column(String, nullable=True)

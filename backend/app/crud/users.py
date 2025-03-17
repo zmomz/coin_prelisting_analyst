@@ -64,7 +64,7 @@ async def get_users(
 async def update_user(
     db: AsyncSession, db_user: User, user_in: UserUpdate
 ) -> User:
-    for field, value in user_in.dict(exclude_unset=True).items():
+    for field, value in user_in.model_dump(exclude_unset=True).items():
         if field == "password":  # Hash new password if provided
             value = get_password_hash(value)
         setattr(db_user, field, value)

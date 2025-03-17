@@ -1,6 +1,6 @@
 from decouple import config
 from typing import List
-from pydantic import AnyHttpUrl
+from pydantic import AnyHttpUrl, ConfigDict
 from pydantic_settings import BaseSettings
 
 
@@ -32,10 +32,7 @@ class Settings(BaseSettings):
     ENVIRONMENT: str = config("ENVIRONMENT")
     LOG_LEVEL: str = config("LOG_LEVEL")
 
-    class Config:
-        case_sensitive = True
-        env_file = ".env"
-        extra = "allow"
+    model_config = ConfigDict(case_sensitive=True, env_file=".env", extra="allow")
 
 
 settings = Settings()

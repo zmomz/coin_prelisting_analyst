@@ -53,7 +53,7 @@ async def get_coins(
 async def update_coin(
     db: AsyncSession, db_coin: Coin, coin_in: CoinUpdate
 ) -> Coin:
-    for field, value in coin_in.dict(exclude_unset=True).items():
+    for field, value in coin_in.model_dump(exclude_unset=True).items():
         setattr(db_coin, field, value)
     await db.commit()
     await db.refresh(db_coin)

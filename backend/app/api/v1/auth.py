@@ -6,7 +6,7 @@ from pydantic import BaseModel
 from app.core.config import settings
 from app.core.security import create_access_token, verify_password
 from app.crud.users import create_user, get_user_by_email
-from app.db.session import get_db_main
+from app.db.session import get_db
 from app.schemas.auth import Token
 from app.schemas.user import UserCreate, UserOut
 
@@ -21,7 +21,7 @@ class LoginRequest(BaseModel):
 @router.post("/login", response_model=Token)
 async def login_user(
     login_data: LoginRequest,  # Accept JSON
-    db: AsyncSession = Depends(get_db_main)
+    db: AsyncSession = Depends(get_db)
 ):
     """Authenticate user and return JWT token."""
     user = await get_user_by_email(db, login_data.email)  # Use email instead of username
@@ -42,7 +42,7 @@ async def login_user(
 @router.post("/register", response_model=UserOut, status_code=status.HTTP_201_CREATED)
 async def register_user(
     user_in: UserCreate,
-    db: AsyncSession = Depends(get_db_main)
+    db: AsyncSession = Depends(get_db)
 ):
     """Register a new user."""
     print(f"🔍 Registering user: {user_in.email}, Role: {user_in.role}")  # Debug Log

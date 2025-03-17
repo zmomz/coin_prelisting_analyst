@@ -2,6 +2,7 @@ alembic==1.15.1
 amqp==5.3.1
 annotated-types==0.7.0
 anyio==4.8.0
+asgi-lifespan==2.1.0
 async-timeout==5.0.1
 asyncpg==0.30.0
 bcrypt==4.3.0
@@ -20,6 +21,7 @@ ecdsa==0.19.0
 email_validator==2.2.0
 exceptiongroup==1.2.2
 fastapi==0.115.11
+gevent==24.11.1
 greenlet==3.1.1
 h11==0.14.0
 httpcore==1.0.7
@@ -50,10 +52,12 @@ pytest==8.3.5
 pytest-asyncio==0.25.3
 pytest-mock==3.14.0
 python-dateutil==2.9.0.post0
+python-decouple==3.8
 python-dotenv==1.0.1
 python-jose==3.4.0
 PyYAML==6.0.2
 redis==5.2.1
+respx==0.22.0
 rsa==4.9
 ruff==0.9.10
 six==1.17.0
@@ -69,4 +73,5 @@ vine==5.1.0
 watchfiles==1.0.4
 wcwidth==0.2.13
 websockets==15.0.1
-python-decouple==3.8
+zope.event==5.0
+zope.interface==7.2

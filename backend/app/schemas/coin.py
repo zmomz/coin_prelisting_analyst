@@ -16,6 +16,7 @@ class CoinBase(BaseModel):
 class CoinCreate(CoinBase):
     name: str
     symbol: str
+    coingeckoid: str
     description: Optional[str] = None
     github: Optional[str] = None
     id: uuid.UUID = uuid.uuid4()  # ✅ Auto-generate ID if needed

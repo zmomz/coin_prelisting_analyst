@@ -10,7 +10,7 @@ from app.schemas.suggestion import SuggestionCreate, SuggestionUpdate
 async def create_suggestion(
     db: AsyncSession, suggestion_in: SuggestionCreate, user_id: uuid.UUID
 ) -> Suggestion:
-    suggestion = Suggestion(**suggestion_in.dict(), user_id=user_id)
+    suggestion = Suggestion(**suggestion_in.model_dump(), user_id=user_id)
     db.add(suggestion)
     await db.commit()
     await db.refresh(suggestion)
@@ -39,7 +39,7 @@ async def get_suggestions(
 async def update_suggestion(
     db: AsyncSession, db_suggestion: Suggestion, suggestion_in: SuggestionUpdate
 ) -> Suggestion:
-    for field, value in suggestion_in.dict(exclude_unset=True).items():
+    for field, value in suggestion_in.model_dump(exclude_unset=True).items():
         setattr(db_suggestion, field, value)
     await db.commit()
     await db.refresh(db_suggestion)

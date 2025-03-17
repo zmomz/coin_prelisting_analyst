@@ -7,19 +7,22 @@ celery_app = Celery(
     backend=settings.CELERY_RESULT_BACKEND,
 )
 
+celery_app.autodiscover_tasks(["app.tasks"], force=True)
+
+celery_app.conf.timezone = "UTC"
+
 celery_app.conf.beat_schedule = {
     "fetch_coin_data": {
-        "task": "fetch_coin_data",
+        "task": "app.tasks.coin_data.fetch_coin_data",
         "schedule": 60 * 60 * 6,  # every 6 hours
     },
     "recalculate_scores": {
-        "task": "recalculate_scores",
+        "task": "app.tasks.scoring.recalculate_scores",
         "schedule": 60 * 60 * 6,  # every 6 hours
     },
     "notify_pending_suggestions": {
-        "task": "notify_pending_suggestions",
+        "task": "app.tasks.notifications.notify_pending_suggestions",
         "schedule": 60 * 60 * 24,  # every day
     },
 }
 
-celery_app.conf.timezone = "UTC"

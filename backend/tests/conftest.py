@@ -1,46 +1,64 @@
 import pytest
+import pytest_asyncio
 import uuid
 import logging
-import asyncio
 from decouple import config
-from fastapi import FastAPI
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy import delete
-from httpx import AsyncClient
-from contextlib import asynccontextmanager
-from app.db.session import AsyncSessionLocalTest
+from httpx import AsyncClient, ASGITransport
+from asgi_lifespan import LifespanManager
 from datetime import datetime
+from sqlalchemy.sql import text
 
 from app.db.base import Base
-from app.db.session import get_db_test
+from app.db.session import get_db
 from app.main import app
 from app.core.security import create_access_token
-from app.core.config import settings
-from app.models.user import User
+from app.models.user import User, UserRole
+from app.models.coin import Coin
 from app.models.metric import Metric
 from app.models.scoring_weight import ScoringWeight
 
+###############################################################################
+#                               SETTINGS & LOGGING
+###############################################################################
 
-# Initialize logger
-logger = logging.getLogger(__name__)
-logging.basicConfig(level=logging.INFO)
+class Settings:
+    DATABASE_URL: str = config("TEST_DATABASE_URL")
 
-# Override settings for testing
-settings.SECRET_KEY = config("SECRET_KEY")
-settings.DATABASE_URL = config("TEST_DATABASE_URL")
-settings.REDIS_URL = config("REDIS_URL")
-settings.CELERY_BROKER_URL = config("CELERY_BROKER_URL")
-settings.CELERY_RESULT_BACKEND = config("CELERY_RESULT_BACKEND")
-settings.GITHUB_TOKEN = config("GITHUB_TOKEN")
-settings.TWITTER_BEARER_TOKEN = config("TWITTER_BEARER_TOKEN")
-settings.REDDIT_CLIENT_ID = config("REDDIT_CLIENT_ID")
-settings.REDDIT_CLIENT_SECRET = config("REDDIT_CLIENT_SECRET")
-settings.REDDIT_USER_AGENT = config("REDDIT_USER_AGENT")
-settings.SLACK_WEBHOOK_URL = config("SLACK_WEBHOOK_URL")
+settings = Settings()
+
+@pytest.fixture(scope="session", autouse=True)
+def setup_logging():
+    """Configure logging for the entire test session."""
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s - %(levelname)s - %(message)s",
+        handlers=[
+            logging.FileHandler("test_debug.log", mode="w"),  # Log to file
+            logging.StreamHandler()                           # Log to console
+        ],
+    )
+
+    # Suppress SQLAlchemy logs globally (optional)
+    for logger_name in [
+        "sqlalchemy.engine",
+        "sqlalchemy.orm",
+        "sqlalchemy.pool",
+        "sqlalchemy.dialects",
+    ]:
+        logging.getLogger(logger_name).setLevel(logging.ERROR)
+
+
+###############################################################################
+#                               DATABASE SETUP
+###############################################################################
 
 # Create async engine for testing
 engine = create_async_engine(settings.DATABASE_URL, echo=True, future=True)
+
+# Create an async sessionmaker bound to the test engine
 TestingSessionLocal = sessionmaker(
     bind=engine,
     class_=AsyncSession,
@@ -49,86 +67,110 @@ TestingSessionLocal = sessionmaker(
     autoflush=False,
 )
 
-
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    """Ensure test database is set up before running tests."""
+@pytest_asyncio.fixture(scope="session", autouse=True)
+async def init_test_db():
+    """
+    Creates all tables at the start of the test session, drops them at the end.
+    Ensures a fresh schema for tests.
+    """
     async with engine.begin() as conn:
-        print("🔄 Initializing Test Database...")
+        print("🔄 [init_test_db] Creating all tables for test...")
         await conn.run_sync(Base.metadata.create_all)
 
-    await asyncio.sleep(1)  # ✅ Give the database time to initialize
-
-    yield  # ✅ Run tests
+    yield  # Run all tests
 
     async with engine.begin() as conn:
-        print("🧹 Cleaning Up Test Database...")
+        print("🧹 [init_test_db] Dropping all tables after test session...")
         await conn.run_sync(Base.metadata.drop_all)
 
 
-# Attach lifespan to FastAPI instance
-app = FastAPI(lifespan=lifespan)  # noqa
-
-
-# ✅ Ensure a consistent event loop across all tests
-@pytest.fixture(scope="session")
-def event_loop():
-    """Create a session-wide event loop."""
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)  # ✅ Explicitly set this loop as default
-    yield loop
-    loop.close()
-
-
-# ✅ Keep database session scoped to **function** for test isolation
-@pytest.fixture(scope="function")
+@pytest_asyncio.fixture(scope="function")
 async def db_session():
-    """Creates a fresh database session per test."""
-    async with AsyncSessionLocalTest() as session:
+    """Creates a fresh test database session per test function."""
+    async with TestingSessionLocal() as session:
         try:
             yield session
         except Exception as e:
-            await session.rollback()  # ✅ Rollback on failure
+            await session.rollback()
             raise e
         finally:
-            await session.close()  # ✅ Ensure session is closed properly
+            await session.close()
 
 
-# ✅ Override FastAPI's `get_db_test` once for all tests
-@pytest.fixture(scope="session")
-async def override_get_db_test():
-    """Override FastAPI's `get_db_test` dependency with test session."""
+###############################################################################
+#                     DB CLEANUP PER TEST (KEY PART)
+###############################################################################
+@pytest_asyncio.fixture(scope="function", autouse=True)
+async def clean_db(db_session: AsyncSession):
+    """
+    Truncate all tables before each test to ensure a clean DB.
+    This fixture runs automatically (autouse=True) for every test function.
+    """
+    tables = ["coins", "metrics", "scores", "scoring_weights", "suggestions",
+              "user_activities", "users"]
+    for table in tables:
+        await db_session.execute(text(f'TRUNCATE TABLE "{table}" RESTART IDENTITY CASCADE'))
+    await db_session.commit()
+
+
+###############################################################################
+#                     OVERRIDE FastAPI's get_db DEPENDENCY
+###############################################################################
+
+@pytest_asyncio.fixture(scope="session", autouse=True)
+async def override_get_db():
+    """
+    Override FastAPI's `get_db` dependency once per test session so that
+    all routes use the test DB sessionmaker instead of the real DB.
+    """
+
     async def _get_test_db():
-        async with AsyncSessionLocalTest() as session:
+        async with TestingSessionLocal() as session:
             yield session
 
-    app.dependency_overrides[get_db_test] = _get_test_db
+    app.dependency_overrides[get_db] = _get_test_db
     yield
     app.dependency_overrides.clear()
 
 
-# ✅ Keep client session-wide to improve performance
-@pytest.fixture(scope="session")
-async def client():
-    """Provides an async HTTP client for testing."""
-    async with AsyncClient(base_url="http://127.0.0.1:8000", timeout=30) as ac:
-        yield ac
+###############################################################################
+#                          IN-PROCESS TEST CLIENT
+###############################################################################
+
+@pytest_asyncio.fixture(scope="session")
+async def client(init_test_db, override_get_db):
+    """
+    Provides an in-process client for testing, powered by:
+      - asgi-lifespan (to run startup/shutdown)
+      - httpx.ASGITransport (to send requests in-memory to the app)
+    """
+    async with LifespanManager(app):
+        # ASGITransport routes requests directly to the in-memory FastAPI app
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://testserver") as ac:
+            yield ac
 
 
-@pytest.fixture(scope="function")
-async def unauthorized_client():
-    """Fixture for an unauthenticated
-    client (ensures no Authorization header)."""
-    async with AsyncClient(base_url="http://127.0.0.1:8000") as client:
-        client.headers.pop("Authorization", None)  # Ensure no auth header
-        yield client
+@pytest_asyncio.fixture(scope="function")
+async def unauthorized_client(init_test_db, override_get_db):
+    """
+    Provides an in-process client with NO Authorization header.
+    Useful for testing endpoints that require or forbid auth.
+    """
+    async with LifespanManager(app):
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://testserver") as ac:
+            ac.headers.pop("Authorization", None)
+            yield ac
 
 
-# ✅ Make test_user function-scoped for test isolation
-@pytest.fixture(scope="function")
+###############################################################################
+#                               TEST FIXTURES
+###############################################################################
+
+@pytest_asyncio.fixture(scope="function")
 async def test_user(db_session):
-    """Creates a unique test user per test."""
-    from app.models.user import User, UserRole
+    """Creates and returns a unique test user per test function."""
     from app.core.security import get_password_hash
 
     unique_email = f"test_{uuid.uuid4().hex[:8]}@example.com"
@@ -147,31 +189,33 @@ async def test_user(db_session):
     return user
 
 
-# ✅ Ensure authenticated client is fresh per test
-@pytest.fixture(scope="function")
+@pytest_asyncio.fixture(scope="function")
 async def authenticated_client(client, test_user):
-    """Creates an authenticated client with a test user."""
+    """Provides a client already authenticated with the given test_user."""
     access_token = create_access_token({"sub": str(test_user.id)})
-    client.headers = {"Authorization": f"Bearer {access_token}"}
+    client.headers.update({"Authorization": f"Bearer {access_token}"})
     return client
 
 
-# ✅ Manager client should be fresh per test
-@pytest.fixture(scope="function")
+@pytest_asyncio.fixture(scope="function")
 async def manager_client(client: AsyncClient, db_session: AsyncSession):
-    """Authenticated test client with a MANAGER role."""
+    """
+    Creates a fresh MANAGER user and logs them in to the in-process test client.
+    """
+    # Clear any old users
     await db_session.execute(delete(User))
     await db_session.commit()
 
     unique_email = f"manager_{uuid.uuid4().hex[:8]}@example.com"
 
-    response = await client.post(
+    # Register a manager
+    register_response = await client.post(
         "/api/v1/auth/register",
-        json={"email": unique_email, "password": "testpassword",
-              "name": "Test Manager", "role": "manager"},
+        json={"email": unique_email, "password": "testpassword", "name": "Test Manager", "role": "manager"},
     )
-    assert response.status_code == 201, response.text
+    assert register_response.status_code == 201, register_response.text
 
+    # Login
     login_response = await client.post(
         "/api/v1/auth/login",
         json={"email": unique_email, "password": "testpassword"},
@@ -183,18 +227,18 @@ async def manager_client(client: AsyncClient, db_session: AsyncSession):
     return client
 
 
-# ✅ Test coins should be function-scoped for isolation
-@pytest.fixture(scope="function")
+@pytest_asyncio.fixture(scope="function")
 async def test_coin(db_session):
-    """Creates a test coin."""
-    from app.models.coin import Coin
-
+    """Creates a single test coin and returns it."""
+    unique_symbol = f"TEST_{uuid.uuid4().hex[:6]}"
+    unique_id = uuid.uuid4()
     coin = Coin(
-        id=uuid.uuid4(),
-        name="Test Coin",
-        symbol=f"TEST{uuid.uuid4().hex[:4]}",
-        description="A test coin for testing",
-        github="https://github.com/test/test",
+        id=unique_id,
+        coingeckoid=unique_symbol,
+        name=unique_symbol,
+        symbol=unique_symbol,
+        description="coin for testing",
+        github="https://github.com/onlycoinfortesting",
         is_active=True,
     )
     db_session.add(coin)
@@ -203,36 +247,61 @@ async def test_coin(db_session):
     return coin
 
 
-@pytest.fixture(scope="function")
+@pytest_asyncio.fixture(scope="function")
 async def test_coins(db_session):
-    """Creates multiple test coins."""
-    from app.models.coin import Coin
+    """Creates multiple test coins and returns them as a list of Coin objects."""
+    coin_data_list = [
+        {
+            "id": "bitcoin",
+            "symbol": "btc",
+            "name": "Bitcoin",
+            "description": "Bitcoin (BTC) is a cryptocurrency.",
+            "github": "https://github.com/bitcoin"
+        },
+        {
+            "id": "ethereum",
+            "symbol": "eth",
+            "name": "Ethereum",
+            "description": "Ethereum (ETH) is a cryptocurrency.",
+            "github": "https://github.com/ethereum"
+        },
+        {
+            "id": "solana",
+            "symbol": "sol",
+            "name": "Solana",
+            "description": "Solana (SOL) is a cryptocurrency.",
+            "github": "https://github.com/solana-labs"
+        }
+    ]
 
-    coins = []
-    for i in range(3):
+    created_coins = []
+    for raw in coin_data_list:
         coin = Coin(
             id=uuid.uuid4(),
-            name=f"Test Coin {i}",
-            symbol=f"TEST{i}{uuid.uuid4().hex[:4]}",
-            description=f"A test coin {i} for testing",
-            github=f"https://github.com/test/test{i}",
+            coingeckoid=raw["id"],
+            name=raw["name"],
+            symbol=raw["symbol"],
+            description=raw["description"],
+            github=raw["github"],
             is_active=True,
         )
         db_session.add(coin)
-        coins.append(coin)
+        created_coins.append(coin)
 
     await db_session.commit()
-    for coin in coins:
+    # Refresh each coin so we get updated fields (e.g. auto-timestamps) from DB
+    for coin in created_coins:
         await db_session.refresh(coin)
 
-    return coins
+    return created_coins
 
 
-@pytest.fixture
+@pytest_asyncio.fixture(scope="function")
 async def test_metrics(db_session, test_coin):
-    """Fixture to create test metrics."""
-    metrics = [
-        Metric(
+    """Creates several metrics linked to a single coin."""
+    metrics = []
+    for _ in range(3):
+        metric = Metric(
             id=uuid.uuid4(),
             coin_id=test_coin.id,
             market_cap={"value": 1000000, "currency": "USD"},
@@ -245,21 +314,20 @@ async def test_metrics(db_session, test_coin):
             is_active=True,
             created_at=datetime.now(),
         )
-        for _ in range(3)
-    ]
+        db_session.add(metric)
+        metrics.append(metric)
 
-    db_session.add_all(metrics)
     await db_session.commit()
-    await db_session.flush()
+    for m in metrics:
+        await db_session.refresh(m)
 
     return metrics
 
 
-@pytest.fixture(scope="function")
-async def test_suggestion(db_session, test_coin, test_user):
-    """Creates a test suggestion."""
+@pytest_asyncio.fixture(scope="function")
+async def test_suggestion_pending(db_session, test_coin, test_user):
+    """Creates a single test suggestion."""
     from app.models.suggestion import Suggestion, SuggestionStatus
-
     suggestion = Suggestion(
         id=uuid.uuid4(),
         coin_id=test_coin.id,
@@ -273,10 +341,27 @@ async def test_suggestion(db_session, test_coin, test_user):
     await db_session.refresh(suggestion)
     return suggestion
 
+@pytest_asyncio.fixture(scope="function")
+async def test_suggestion_approved(db_session, test_coin, test_user):
+    """Creates a single test suggestion."""
+    from app.models.suggestion import Suggestion, SuggestionStatus
+    suggestion = Suggestion(
+        id=uuid.uuid4(),
+        coin_id=test_coin.id,
+        user_id=test_user.id,
+        note="Test suggestion",
+        status=SuggestionStatus.APPROVED,
+        is_active=True,
+    )
+    db_session.add(suggestion)
+    await db_session.commit()
+    await db_session.refresh(suggestion)
+    return suggestion
 
-@pytest.fixture
+
+@pytest_asyncio.fixture(scope="function")
 async def scoring_weight(db_session: AsyncSession):
-    """Fixture to create a test scoring weight entry."""
+    """Creates and returns a test scoring weight entry."""
     weight = ScoringWeight(
         liquidity_score=0.3,
         developer_score=0.2,
@@ -287,3 +372,38 @@ async def scoring_weight(db_session: AsyncSession):
     await db_session.commit()
     await db_session.refresh(weight)
     return weight
+
+
+###############################################################################
+#                            OPTIONAL DEBUG FIXTURE
+###############################################################################
+
+@pytest_asyncio.fixture(scope="session", autouse=True)
+async def debug_db(init_test_db):
+    """
+    Prints some debug info about the current DB/tables at the start of the test session.
+    This runs after tables are created but before any test runs.
+    """
+    async with engine.connect() as conn:
+        # Check current database
+        result = await conn.execute(text("SELECT current_database();"))
+        db_name = result.scalar()
+        print(f"✅ Connected to database: {db_name}")
+
+        # Check available tables
+        result = await conn.execute(text("SELECT tablename FROM pg_tables WHERE schemaname = 'public'"))
+        tables = [row[0] for row in result.fetchall()]
+        print(f"📌 Tables in database: {tables}")
+
+        # Check structure of 'metrics' table
+        result = await conn.execute(text("""
+            SELECT column_name, data_type
+            FROM information_schema.columns
+            WHERE table_name = 'metrics'
+        """))
+        columns = result.fetchall()
+        print(f"🛠 Metric table columns: {columns}")
+
+    # We've already created tables in init_test_db, so just print info here.
+    yield
+    # init_test_db will drop tables after the session.

@@ -13,11 +13,9 @@ class Metric(Base):
     market_cap = Column(JSON, nullable=False)  # ✅ Ensuring JSON consistency
     volume_24h = Column(JSON, nullable=False)
     liquidity = Column(JSON, nullable=False)
-
     github_activity = Column(JSON, nullable=True)
     twitter_sentiment = Column(JSON, nullable=True)
     reddit_sentiment = Column(JSON, nullable=True)
-
     fetched_at = Column(DateTime, nullable=False, server_default=func.now())
     is_active = Column(Boolean, default=True, nullable=False)
     created_at = Column(DateTime, server_default=func.now(), nullable=False)
