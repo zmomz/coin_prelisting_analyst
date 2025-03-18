@@ -1,42 +1,111 @@
-import asyncio
 import httpx
+from sqlalchemy.ext.asyncio import AsyncSession
+from app.models import Coin
+from datetime import datetime
+import asyncio
 from typing import Optional, Dict
-from app.core.config import settings
+from sqlalchemy.sql import text
 
 
-async def fetch_coin_market_data(symbol: str, retries: int = 5) -> Optional[Dict]:
+async def fetch_and_store_coins(db_session: AsyncSession):
+    """Fetch all available coins from CoinGecko and store new ones in the database."""
+
+    url = "https://api.coingecko.com/api/v3/coins/list"
+
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.get(url, timeout=10)
+            response.raise_for_status()
+            coins_data = response.json()
+
+            if not coins_data:
+                print("❌ No coins data fetched.")
+                return
+
+            print(f"✅ Fetched {len(coins_data)} coins from CoinGecko.")
+
+            # Query existing coins in the database
+            existing_coins = {coin.coingeckoid for coin in await db_session.execute(text("SELECT coingeckoid FROM coins"))}
+
+            new_coins = []
+            for coin in coins_data:
+                if coin["id"] not in existing_coins:
+                    new_coins.append(
+                        Coin(
+                            name=coin["name"],
+                            symbol=coin["symbol"].upper(),
+                            coingeckoid=coin["id"],
+                            created_at=datetime.now()
+                        )
+                    )
+
+            if new_coins:
+                db_session.add_all(new_coins)
+                await db_session.commit()
+                print(f"✅ Added {len(new_coins)} new coins to the database.")
+            else:
+                print("⚡ No new coins found.")
+
+    except httpx.HTTPStatusError as http_err:
+        print(f"HTTP error occurred: {http_err}")
+    except httpx.RequestError as req_err:
+        print(f"Request error occurred: {req_err}")
+    except Exception as err:
+        print(f"An error occurred: {err}")
+
+
+# coingecko.py
+async def fetch_coin_market_data(coin_id: str, retries: int = 5) -> Optional[Dict]:
     """Fetch market data for a given coin symbol from CoinGecko with retry logic."""
-    url = f"{settings.COINGECKO_API_URL}/coins/markets"
-    params = {
-        "vs_currency": "usd",
-        "ids": symbol.lower(),
-    }
 
+    url = f"https://api.coingecko.com/api/v3/coins/{coin_id}"
     delay = 1  # Initial delay for exponential backoff
+    response = None
 
-    async with httpx.AsyncClient() as client:
-        for attempt in range(retries):
-            response = await client.get(url, params=params)
+    for attempt in range(retries):
+        async with httpx.AsyncClient() as client:
+            try:
+                response = await client.get(url, timeout=10)
+                response.raise_for_status()
+                coin_data = response.json()
 
-            if response.status_code == 200:
-                data = response.json()
-                if not data:
+                if not coin_data:
                     return None
 
-                coin_data = data[0]
+                github_list = coin_data.get("links", {}).get("repos_url", {}).get("github") or [""]
+                github_url = github_list[0] if github_list else ""
                 return {
+                    "name": coin_data.get("name"),
+                    "symbol": coin_data.get("symbol"),
+                    "description": coin_data.get("description", {}).get("en", ""),
+                    "github": github_url,
+                    "x": f"https://x.com/{coin_data.get('links', {}).get('twitter_screen_name', '')}",
+                    "reddit": coin_data.get("links", {}).get("subreddit_url", ""),
+                    "telegram": f"https://t.me/{coin_data.get('links', {}).get('telegram_channel_identifier', '')}",
+                    "website": coin_data.get("links", {}).get("homepage", [""])[0],
                     "coingeckoid": coin_data.get("id"),
-                    "market_cap": {"value": coin_data.get("market_cap"), "currency": "USD"},
-                    "volume_24h": {"value": coin_data.get("total_volume"), "currency": "USD"},
-                    "liquidity": {"value": coin_data.get("liquidity_score"), "currency": "USD"},
-                    "github_activity": coin_data.get("developer_data", {}).get("commit_count_4_weeks", 0),
-                    "twitter_sentiment": coin_data.get("sentiment_votes_up_percentage", 0.0),
-                    "reddit_sentiment": coin_data.get("sentiment_votes_down_percentage", 0.0),
-                    "fetched_at": coin_data.get("last_updated"),
+                    "market_cap": coin_data.get("market_data", {}).get("market_cap", {}).get("usd", 0),
+                    "total_volume": coin_data.get("market_data", {}).get("total_volume", {}).get("usd", 0),
+                    "liquidity_score": coin_data.get("liquidity_score", 0),
+                    "developer_data": coin_data.get("developer_data", {}),
+                    "sentiment_votes_up_percentage": coin_data.get("sentiment_votes_up_percentage", 0.0),
+                    "sentiment_votes_down_percentage": coin_data.get("sentiment_votes_down_percentage", 0.0)
                 }
 
-            elif response.status_code == 429:
+            except httpx.HTTPStatusError as http_err:
+                print(f"HTTP error occurred: {http_err}")
+            except httpx.RequestError as req_err:
+                print(f"Request error occurred: {req_err}")
+            except Exception as err:
+                print(f"An error occurred: {err}")
+
+            # Check if response exists before checking status code
+            if response and response.status_code == 429:  # Rate limit
                 print(f"⚠️ Rate limited. Retrying in {delay} seconds... (Attempt {attempt + 1}/{retries})")
+                await asyncio.sleep(delay)
+                delay *= 2  # Exponential backoff
+            elif response:  # Other errors
+                print(f"⚠️ Error with status code {response.status_code}. Retrying in {delay} seconds... (Attempt {attempt + 1}/{retries})")
                 await asyncio.sleep(delay)
                 delay *= 2  # Exponential backoff
 
