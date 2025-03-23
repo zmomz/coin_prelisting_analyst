@@ -123,7 +123,7 @@ docker-compose up --build
 | **Manager**     | All Analyst permissions + approve/reject suggestions, adjust scoring algorithm, manage users |
 
 ---
-
+```
 backend/ 
 ├── app/  # Main FastAPI app directory
 │   ├── api/
@@ -144,4 +144,4 @@ backend/
 ├── .env
 ├── docker-compose.yml
 └── dockerfile
-
+```
