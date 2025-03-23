@@ -1,7 +1,7 @@
 from datetime import timedelta
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
-from pydantic import BaseModel
+from pydantic import BaseModel, EmailStr
 
 from app.core.config import settings
 from app.core.security import create_access_token, verify_password
@@ -9,23 +9,27 @@ from app.crud.users import create_user, get_user_by_email
 from app.db.session import get_db
 from app.schemas.auth import Token
 from app.schemas.user import UserCreate, UserOut
+from app.core.logging import logger
 
 router = APIRouter(prefix="/auth")
 
 
 class LoginRequest(BaseModel):
-    email: str
+    email: EmailStr
     password: str
 
 
-@router.post("/login", response_model=Token)
+@router.post("/login", response_model=Token, status_code=status.HTTP_200_OK)
 async def login_user(
-    login_data: LoginRequest,  # Accept JSON
+    login_data: LoginRequest,
     db: AsyncSession = Depends(get_db)
 ):
     """Authenticate user and return JWT token."""
-    user = await get_user_by_email(db, login_data.email)  # Use email instead of username
+    normalized_email = login_data.email.strip().lower()
+    user = await get_user_by_email(db, normalized_email)
+    
     if not user or not verify_password(login_data.password, user.hashed_password):
+        logger.warning(f"Failed login attempt for {normalized_email}")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect email or password",
@@ -36,6 +40,7 @@ async def login_user(
         data={"sub": str(user.id)}, expires_delta=access_token_expires
     )
     
+    logger.info(f"User {user.email} logged in successfully.")
     return {"access_token": access_token, "token_type": "bearer"}
 
 
@@ -45,23 +50,18 @@ async def register_user(
     db: AsyncSession = Depends(get_db)
 ):
     """Register a new user."""
-    print(f"🔍 Registering user: {user_in.email}, Role: {user_in.role}")  # Debug Log
+    normalized_email = user_in.email.strip().lower()
 
-    try:
-        user = await get_user_by_email(db, user_in.email)
-        if user:
-            print(f"⚠️ User already exists: {user_in.email}")  # Debug Log
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Email already registered",
-            )
+    existing_user = await get_user_by_email(db, normalized_email)
+    if existing_user:
+        logger.warning(f"Attempt to register with existing email: {normalized_email}")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Email already registered",
+        )
 
-        user = await create_user(db, user_in)
-        print(f"✅ User created: {user.email}, Role: {user.role}")  # Debug Log
-        return user
+    user_in.email = normalized_email  # Normalize for creation
+    new_user = await create_user(db, user_in)
+    logger.info(f"Registered new user: {new_user.email} (role={new_user.role})")
 
-    except Exception as e:
-        import traceback
-        error_message = traceback.format_exc()
-        print(f"🚨 FULL ERROR TRACEBACK: \n{error_message}")  # Debug Log
-        raise HTTPException(status_code=500, detail=str(e))  # Show real error
+    return new_user

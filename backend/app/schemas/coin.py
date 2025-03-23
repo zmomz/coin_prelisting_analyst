@@ -5,6 +5,9 @@ from pydantic import BaseModel, Field, ConfigDict
 
 
 class CoinBase(BaseModel):
+    name: str
+    symbol: str
+    coingeckoid: str
     description: Optional[str] = None
     github: Optional[str] = None
     x: Optional[str] = None
@@ -12,16 +15,11 @@ class CoinBase(BaseModel):
     telegram: Optional[str] = None
     website: Optional[str] = None
 
-    model_config = ConfigDict(from_attributes=True)
-
 
 class CoinCreate(CoinBase):
-    id: uuid.UUID = Field(default_factory=uuid.uuid4)  # ✅ Auto-generate ID
-    name: str
-    symbol: str
-    coingeckoid: str
-    is_active: bool = True  # ✅ Default active state
-    created_at: datetime = Field(default_factory=datetime.now)  # ✅ Default timestamp
+    id: uuid.UUID = Field(default_factory=uuid.uuid4)
+    is_active: bool = True
+    created_at: datetime = Field(default_factory=datetime.now)
 
 
 class CoinUpdate(BaseModel):
@@ -43,4 +41,3 @@ class CoinOut(CoinBase):
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
-

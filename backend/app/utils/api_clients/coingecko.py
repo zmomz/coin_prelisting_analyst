@@ -54,9 +54,8 @@ async def fetch_and_store_coins(db_session: AsyncSession):
         print(f"An error occurred: {err}")
 
 
-# coingecko.py
 async def fetch_coin_market_data(coin_id: str, retries: int = 5) -> Optional[Dict]:
-    """Fetch market data for a given coin symbol from CoinGecko with retry logic."""
+    """Fetch market data for a given coin from CoinGecko with retry logic."""
 
     url = f"https://api.coingecko.com/api/v3/coins/{coin_id}"
     delay = 1  # Initial delay for exponential backoff
@@ -66,14 +65,15 @@ async def fetch_coin_market_data(coin_id: str, retries: int = 5) -> Optional[Dic
         async with httpx.AsyncClient() as client:
             try:
                 response = await client.get(url, timeout=10)
-                response.raise_for_status()
-                coin_data = response.json()
+                await response.raise_for_status()
+                coin_data = await response.json()
 
                 if not coin_data:
                     return None
 
                 github_list = coin_data.get("links", {}).get("repos_url", {}).get("github") or [""]
                 github_url = github_list[0] if github_list else ""
+
                 return {
                     "name": coin_data.get("name"),
                     "symbol": coin_data.get("symbol"),
@@ -89,7 +89,7 @@ async def fetch_coin_market_data(coin_id: str, retries: int = 5) -> Optional[Dic
                     "liquidity_score": coin_data.get("liquidity_score", 0),
                     "developer_data": coin_data.get("developer_data", {}),
                     "sentiment_votes_up_percentage": coin_data.get("sentiment_votes_up_percentage", 0.0),
-                    "sentiment_votes_down_percentage": coin_data.get("sentiment_votes_down_percentage", 0.0)
+                    "sentiment_votes_down_percentage": coin_data.get("sentiment_votes_down_percentage", 0.0),
                 }
 
             except httpx.HTTPStatusError as http_err:
@@ -99,15 +99,15 @@ async def fetch_coin_market_data(coin_id: str, retries: int = 5) -> Optional[Dic
             except Exception as err:
                 print(f"An error occurred: {err}")
 
-            # Check if response exists before checking status code
-            if response and response.status_code == 429:  # Rate limit
+            # Handle rate limits and retry logic
+            if response and response.status_code == 429:
                 print(f"⚠️ Rate limited. Retrying in {delay} seconds... (Attempt {attempt + 1}/{retries})")
                 await asyncio.sleep(delay)
-                delay *= 2  # Exponential backoff
-            elif response:  # Other errors
+                delay *= 2
+            elif response:
                 print(f"⚠️ Error with status code {response.status_code}. Retrying in {delay} seconds... (Attempt {attempt + 1}/{retries})")
                 await asyncio.sleep(delay)
-                delay *= 2  # Exponential backoff
+                delay *= 2
 
     print("❌ Max retries exceeded for CoinGecko API")
-    return None  # Return None if all retries fail
+    return None
