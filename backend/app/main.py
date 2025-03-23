@@ -1,4 +1,4 @@
-import logging
+from app.core.logging import logger
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from starlette.middleware.cors import CORSMiddleware
@@ -6,9 +6,6 @@ from starlette.middleware.cors import CORSMiddleware
 from app.api.v1 import auth, coins, suggestions, users, metrics
 from app.core.config import settings
 
-# Configure logging
-logging.basicConfig(level=settings.LOG_LEVEL.upper())
-logger = logging.getLogger("app.main")
 
 # API version prefix
 API_PREFIX = settings.API_V1_STR if settings.API_V1_STR.startswith("/") else f"/{settings.API_V1_STR}"

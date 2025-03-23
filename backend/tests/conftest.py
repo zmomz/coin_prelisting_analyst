@@ -1,59 +1,37 @@
 import pytest
 import pytest_asyncio
 import uuid
-import logging
-from decouple import config
+from datetime import datetime
+
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.sql import text
 from sqlalchemy import delete
+
 from httpx import AsyncClient, ASGITransport
 from asgi_lifespan import LifespanManager
-from datetime import datetime
-from sqlalchemy.sql import text
 
+from app.core.config import settings
+from app.core.logging import configure_logging
+from app.core.security import create_access_token
 from app.db.base import Base
 from app.db.session import get_db
 from app.main import app
-from app.core.security import create_access_token
 from app.models.user import User, UserRole
 from app.models.coin import Coin
 from app.models.metric import Metric
 from app.models.scoring_weight import ScoringWeight
 
-###############################################################################
-#                               SETTINGS & LOGGING
-###############################################################################
 
-class Settings:
-    DATABASE_URL: str = config("TEST_DATABASE_URL")
-
-settings = Settings()
-
+# ✅ Configure logging using central setup
 @pytest.fixture(scope="session", autouse=True)
 def setup_logging():
-    """Configure logging for the entire test session."""
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s - %(levelname)s - %(message)s",
-        handlers=[
-            logging.FileHandler("test_debug.log", mode="w"),  # Log to file
-            logging.StreamHandler()                           # Log to console
-        ],
-    )
-
-    # Suppress SQLAlchemy logs globally (optional)
-    for logger_name in [
-        "sqlalchemy.engine",
-        "sqlalchemy.orm",
-        "sqlalchemy.pool",
-        "sqlalchemy.dialects",
-    ]:
-        logging.getLogger(logger_name).setLevel(logging.ERROR)
-
+    configure_logging()
 
 ###############################################################################
 #                               DATABASE SETUP
 ###############################################################################
+
 
 # Create async engine for testing
 engine = create_async_engine(settings.DATABASE_URL, echo=True, future=True)

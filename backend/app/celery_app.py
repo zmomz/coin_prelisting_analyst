@@ -1,6 +1,10 @@
 from celery import Celery
 from app.core.config import settings
+from app.core.logging import logger
 from celery.schedules import crontab
+
+
+logger.info("Celery app initialized")
 
 celery_app = Celery(
     "worker",
