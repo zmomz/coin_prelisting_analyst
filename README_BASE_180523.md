@@ -62,11 +62,7 @@ pip install -r requirements.txt
 ### 4️⃣ Run Database Migrations
 
 ```bash
-<<<<<<< HEAD
-python alembic.y upgrade head
-=======
-python alembic.py upgrade head
->>>>>>> b5a58ff526cfbc7d1eef69bb7c330e94c35fa3f7
+alembic upgrade head
 ```
 
 ### 5️⃣ Start the Application
@@ -127,28 +123,3 @@ docker-compose up --build
 | **Manager**     | All Analyst permissions + approve/reject suggestions, adjust scoring algorithm, manage users |
 
 ---
-<<<<<<< HEAD
-
-backend/ 
-├── app/  # Main FastAPI app directory
-│   ├── api/
-│   ├── core/
-│   ├── crud/
-│   ├── db/
-│   ├── models/
-│   ├── schemas/
-│   ├── services/
-│   ├── tasks/
-│   ├── utils/
-│   ├── __init__.py
-│   ├── main.py
-│   ├── celery-app.py
-├── tests/
-├── migrations/
-├── venv/
-├── .env
-├── docker-compose.yml
-└── dockerfile
-=======
->>>>>>>:diffg LO
-
