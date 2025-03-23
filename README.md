@@ -62,11 +62,7 @@ pip install -r requirements.txt
 ### 4️⃣ Run Database Migrations
 
 ```bash
-<<<<<<< HEAD
-python alembic.y upgrade head
-=======
 python alembic.py upgrade head
->>>>>>> b5a58ff526cfbc7d1eef69bb7c330e94c35fa3f7
 ```
 
 ### 5️⃣ Start the Application
@@ -127,7 +123,6 @@ docker-compose up --build
 | **Manager**     | All Analyst permissions + approve/reject suggestions, adjust scoring algorithm, manage users |
 
 ---
-<<<<<<< HEAD
 
 backend/ 
 ├── app/  # Main FastAPI app directory
@@ -149,6 +144,4 @@ backend/
 ├── .env
 ├── docker-compose.yml
 └── dockerfile
-=======
->>>>>>>:diffg LO
 
