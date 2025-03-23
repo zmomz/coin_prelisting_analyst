@@ -62,7 +62,7 @@ pip install -r requirements.txt
 ### 4️⃣ Run Database Migrations
 
 ```bash
-alembic upgrade head
+python alembic.py upgrade head
 ```
 
 ### 5️⃣ Start the Application
