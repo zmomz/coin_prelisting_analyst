@@ -181,7 +181,7 @@ async def test_user(db_session):
 
 
 @pytest_asyncio.fixture(scope="function")
-async def authenticated_client(client, test_user):
+async def normal_client(client, test_user):
     """Provides a client already authenticated with the given test_user."""
     access_token = create_access_token({"sub": str(test_user.id)})
     client.headers.update({"Authorization": f"Bearer {access_token}"})

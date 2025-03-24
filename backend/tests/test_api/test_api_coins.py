@@ -51,11 +51,11 @@ async def test_create_coin_unauthorized(unauthorized_client: AsyncClient):
 
 
 @pytest.mark.asyncio(loop_scope="session")
-async def test_create_coin_forbidden(authenticated_client: AsyncClient):
+async def test_create_coin_forbidden(normal_client: AsyncClient):
     """Test creating a coin without manager role."""
 
     request_payload = create_payload()
-    response = await authenticated_client.post(url=URL, json=request_payload)
+    response = await normal_client.post(url=URL, json=request_payload)
 
     assert response.status_code == 403, f"Expected 403, got {response.status_code}"
 

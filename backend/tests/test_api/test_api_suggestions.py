@@ -7,9 +7,9 @@ from app.models.suggestion import SuggestionStatus
 
 
 @pytest.mark.asyncio(loop_scope="session")
-async def test_create_suggestion(authenticated_client: AsyncClient, test_coin):
+async def test_create_suggestion(normal_client: AsyncClient, test_coin):
     """Test creating a new suggestion."""
-    response = await authenticated_client.post(
+    response = await normal_client.post(
         f"{settings.API_V1_STR}/suggestions/",
         json={
             "coin_id": str(test_coin.id),
@@ -24,10 +24,10 @@ async def test_create_suggestion(authenticated_client: AsyncClient, test_coin):
 
 @pytest.mark.asyncio(loop_scope="session")
 async def test_get_suggestion(
-    authenticated_client: AsyncClient, test_suggestion_approved
+    normal_client: AsyncClient, test_suggestion_approved
 ):
     """Test retrieving a suggestion by ID."""
-    response = await authenticated_client.get(
+    response = await normal_client.get(
         f"{settings.API_V1_STR}/suggestions/{test_suggestion_approved.id}"
     )
     assert response.status_code == 200
@@ -39,10 +39,10 @@ async def test_get_suggestion(
 
 @pytest.mark.asyncio(loop_scope="session")
 async def test_get_suggestions(
-    authenticated_client: AsyncClient, test_suggestion_approved
+    normal_client: AsyncClient, test_suggestion_approved
 ):
     """Test listing all suggestions."""
-    response = await authenticated_client.get(f"{settings.API_V1_STR}/suggestions/")
+    response = await normal_client.get(f"{settings.API_V1_STR}/suggestions/")
     assert response.status_code == 200
     data = response.json()
     assert isinstance(data, list)
@@ -53,10 +53,10 @@ async def test_get_suggestions(
 
 @pytest.mark.asyncio(loop_scope="session")
 async def test_update_suggestion(
-    authenticated_client: AsyncClient, test_suggestion_approved
+    normal_client: AsyncClient, test_suggestion_approved
 ):
     """Test updating a suggestion."""
-    response = await authenticated_client.put(
+    response = await normal_client.put(
         f"{settings.API_V1_STR}/suggestions/{test_suggestion_approved.id}",
         json={
             "note": "Updated test suggestion",  # 🔹 Changed from "title" to "note"

@@ -7,7 +7,7 @@ from app.models.metric import Metric
 
 
 @pytest.mark.asyncio(loop_scope="session")
-async def test_get_metric(authenticated_client: AsyncClient, test_metrics, db_session):
+async def test_get_metric(normal_client: AsyncClient, test_metrics, db_session):
     """Test retrieving a single metric."""
 
     # Fetch all metrics from DB
@@ -33,7 +33,7 @@ async def test_get_metric(authenticated_client: AsyncClient, test_metrics, db_se
     assert db_metric is not None, f"❌ Metric ID {metric.id} not found in DB!"
 
     # Perform API request
-    response = await authenticated_client.get(
+    response = await normal_client.get(
         f"{settings.API_V1_STR}/metrics/{metric.id}"
     )
 
@@ -46,7 +46,7 @@ async def test_get_metric(authenticated_client: AsyncClient, test_metrics, db_se
 
 @pytest.mark.asyncio(loop_scope="session")
 async def test_get_metrics_by_coin(
-    authenticated_client: AsyncClient, test_coin, test_metrics, db_session
+    normal_client: AsyncClient, test_coin, test_metrics, db_session
 ):
     """Test retrieving all metrics for a specific coin."""
 
@@ -64,7 +64,7 @@ async def test_get_metrics_by_coin(
     assert len(db_metrics) > 0, f"❌ No metrics found for Coin ID {test_coin.id}!"
 
     # Perform API request
-    response = await authenticated_client.get(
+    response = await normal_client.get(
         f"{settings.API_V1_STR}/metrics/coin/{test_coin.id}"
     )
 
