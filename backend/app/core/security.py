@@ -27,7 +27,7 @@ def create_access_token(
     elif isinstance(expires_delta, int):
         expires_delta = timedelta(minutes=expires_delta)
 
-    expire = datetime.utcnow() + expires_delta
+    expire = datetime.now() + expires_delta
     payload.update({"exp": expire})
 
     return jwt.encode(payload, settings.SECRET_KEY, algorithm=ALGORITHM)

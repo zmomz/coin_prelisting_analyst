@@ -1,5 +1,5 @@
 from typing import Optional
-import uuid
+from uuid import UUID
 
 from fastapi import HTTPException
 from sqlalchemy.exc import IntegrityError
@@ -27,7 +27,7 @@ async def create_coin(db: AsyncSession, coin_in: CoinCreate) -> Coin:
         )
 
 
-async def get_coin(db: AsyncSession, coin_id: str | uuid.UUID) -> Optional[Coin]:
+async def get_coin(db: AsyncSession, coin_id: str | UUID) -> Optional[Coin]:
     """Retrieve a coin by ID."""
     result = await db.execute(
         select(Coin).where(Coin.id == coin_id, Coin.is_active == True)

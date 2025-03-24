@@ -7,7 +7,7 @@ from app.models.coin import Coin
 from app.models.metric import Metric
 from app.models.score import Score
 from app.models.scoring_weight import ScoringWeight
-from app.schemas.score import ScoreIn
+from app.schemas.score import ScoreCreate
 
 logger = logging.getLogger(__name__)
 
@@ -88,7 +88,7 @@ async def recalculate_scores_service(db: AsyncSession):
             final_score = max(0.0, min(final_score, 1.0))
 
             # Insert into Score
-            score_in = ScoreIn(
+            score_in = ScoreCreate(
                 coin_id=coin.id,
                 scoring_weight_id=scoring_weight.id,
                 liquidity_score=liquidity_score,

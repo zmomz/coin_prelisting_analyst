@@ -1,39 +1,41 @@
+from uuid import UUID
 from datetime import datetime
 from typing import Optional
-from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict
+from app.schemas import SchemaBase
 
 
-class MetricValueSchema(BaseModel):
+class MetricValue(SchemaBase):
     value: float
     currency: str
 
 
-class MetricCreate(BaseModel):
-    """Schema for creating a new metric entry."""
-
+class MetricCreate(SchemaBase):
     coin_id: UUID
-    market_cap: MetricValueSchema
-    volume_24h: MetricValueSchema
-    liquidity: MetricValueSchema
-    github_activity: Optional[int] = None
-    twitter_sentiment: Optional[float] = None
-    reddit_sentiment: Optional[float] = None
+    market_cap: MetricValue
+    volume_24h: MetricValue
+    liquidity: MetricValue
+    github_activity: Optional[dict] = None
+    twitter_sentiment: Optional[dict] = None
+    reddit_sentiment: Optional[dict] = None
     fetched_at: datetime
 
 
-class MetricResponseSchema(BaseModel):
+class MetricUpdate(SchemaBase):
+    github_activity: Optional[dict] = None
+    twitter_sentiment: Optional[dict] = None
+    reddit_sentiment: Optional[dict] = None
+
+
+class MetricOut(SchemaBase):
     id: UUID
     coin_id: UUID
-    market_cap: MetricValueSchema
-    volume_24h: MetricValueSchema
-    liquidity: MetricValueSchema
-    github_activity: dict[str, int]
-    twitter_sentiment: dict[str, float]
-    reddit_sentiment: dict[str, float]
+    market_cap: dict
+    volume_24h: dict
+    liquidity: dict
+    github_activity: Optional[dict] = None
+    twitter_sentiment: Optional[dict] = None
+    reddit_sentiment: Optional[dict] = None
     fetched_at: datetime
     is_active: bool
     created_at: datetime
-
-    model_config = ConfigDict(from_attributes=True)

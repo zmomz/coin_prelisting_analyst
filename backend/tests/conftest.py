@@ -17,7 +17,9 @@ from app.core.security import create_access_token, get_password_hash
 from app.db.base import Base
 from app.db.session import get_db
 from app.main import app
-from app.models import Coin, Metric, ScoringWeight, User, UserRole
+from app.models import (
+    Coin, Metric, ScoringWeight, User, UserRole, Suggestion, SuggestionStatus
+)
 
 TEST_PASSWORD = "testpass"
 
@@ -39,8 +41,6 @@ async def init_test_db():
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
     yield
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.drop_all)
 
 
 @pytest_asyncio.fixture(scope="function")
@@ -79,52 +79,39 @@ async def override_get_db():
 # 🔧 Clients
 @pytest_asyncio.fixture(scope="session")
 async def client(init_test_db, override_get_db):
+    """Main client with app lifespan."""
     async with LifespanManager(app):
         transport = ASGITransport(app=app)
         async with AsyncClient(transport=transport, base_url="http://testserver") as ac:
-            # Confirm startup is healthy
             response = await ac.get("/api/health")
             assert response.status_code == 200
             yield ac
 
 
 @pytest_asyncio.fixture(scope="function")
-async def unauthorized_client(init_test_db, override_get_db):
+async def unauthorized_client(client: AsyncClient):
     """Client with no Authorization header."""
-    async with LifespanManager(app):
-        transport = ASGITransport(app=app)
-        async with AsyncClient(transport=transport, base_url="http://testserver") as ac:
-            ac.headers.pop("Authorization", None)
-            yield ac
-
-
-# 🧪 Fixtures
-@pytest_asyncio.fixture(scope="function")
-async def test_user(db_session):
-    user = User(
-        id=uuid.uuid4(),
-        email=f"test_{uuid.uuid4().hex[:6]}@example.com",
-        hashed_password=get_password_hash(TEST_PASSWORD),
-        name="Test User",
-        role=UserRole.ANALYST,
-        is_active=True,
-    )
-    db_session.add(user)
-    await db_session.commit()
-    await db_session.refresh(user)
-    return user
+    original_headers = client.headers.copy()
+    client.headers.pop("Authorization", None)
+    yield client
+    client.headers = original_headers
 
 
 @pytest_asyncio.fixture(scope="function")
-async def normal_client(client, test_user):
+async def normal_client(client: AsyncClient, test_user: User):
+    """Client authenticated as a normal user."""
+    original_headers = client.headers.copy()
     token = create_access_token({"sub": str(test_user.id)})
     client.headers.update({"Authorization": f"Bearer {token}"})
-    return client
+    yield client
+    client.headers = original_headers
 
 
 @pytest_asyncio.fixture(scope="function")
 async def manager_client(client: AsyncClient, db_session: AsyncSession):
-    """Create and login a manager user."""
+    """Client authenticated as a manager."""
+    original_headers = client.headers.copy()
+
     await db_session.execute(delete(User))
     await db_session.commit()
 
@@ -144,7 +131,26 @@ async def manager_client(client: AsyncClient, db_session: AsyncSession):
 
     token = login.json()["access_token"]
     client.headers.update({"Authorization": f"Bearer {token}"})
-    return client
+    yield client
+    client.headers = original_headers
+
+
+
+# 🧪 Fixtures
+@pytest_asyncio.fixture(scope="function")
+async def test_user(db_session):
+    user = User(
+        id=uuid.uuid4(),
+        email=f"test_{uuid.uuid4().hex[:6]}@example.com",
+        hashed_password=get_password_hash(TEST_PASSWORD),
+        name="Test User",
+        role=UserRole.ANALYST,
+        is_active=True,
+    )
+    db_session.add(user)
+    await db_session.commit()
+    await db_session.refresh(user)
+    return user
 
 
 @pytest_asyncio.fixture(scope="function")
@@ -230,3 +236,41 @@ async def scoring_weight(db_session):
     await db_session.commit()
     await db_session.refresh(w)
     return w
+
+
+@pytest_asyncio.fixture(scope="function")
+async def test_suggestion_pending(db_session: AsyncSession, test_coin, test_user):
+    """Fixture for a pending suggestion owned by test_user."""
+    suggestion = Suggestion(
+        id=uuid.uuid4(),
+        coin_id=test_coin.id,
+        user_id=test_user.id,
+        note="Pending suggestion",
+        status=SuggestionStatus.PENDING,
+        is_active=True,
+        created_at=func.now(),
+        updated_at=func.now(),
+    )
+    db_session.add(suggestion)
+    await db_session.commit()
+    await db_session.refresh(suggestion)
+    return suggestion
+
+
+@pytest_asyncio.fixture(scope="function")
+async def test_suggestion_approved(db_session: AsyncSession, test_coin, test_user):
+    """Fixture for an approved suggestion owned by test_user."""
+    suggestion = Suggestion(
+        id=uuid.uuid4(),
+        coin_id=test_coin.id,
+        user_id=test_user.id,
+        note="Approved suggestion",
+        status=SuggestionStatus.APPROVED,
+        is_active=True,
+        created_at=func.now(),
+        updated_at=func.now(),
+    )
+    db_session.add(suggestion)
+    await db_session.commit()
+    await db_session.refresh(suggestion)
+    return suggestion

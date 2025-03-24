@@ -1,76 +1,45 @@
 from uuid import UUID
 
-from sqlalchemy import delete
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 
 from app.models.metric import Metric
-from app.schemas.metric import MetricCreate, MetricResponseSchema, MetricValueSchema
+from app.schemas.metric import MetricCreate, MetricUpdate
 
 
-async def create_metric(
-    db: AsyncSession, metric_data: MetricCreate
-) -> MetricResponseSchema:
+async def create_metric(db: AsyncSession, metric_in: MetricCreate) -> Metric:
     """Create a new metric entry in the database."""
-    metric_dict = metric_data.model_dump()  # ✅ Convert Pydantic model to dictionary
+    metric = Metric(**metric_in.model_dump())
+    db.add(metric)
+    await db.commit()
+    await db.refresh(metric)
+    return metric
 
-    db_metric = Metric(**metric_dict)
-    db.add(db_metric)
+
+async def get_metric_by_id(db: AsyncSession, metric_id: UUID) -> Metric | None:
+    """Retrieve a single metric by its ID."""
+    result = await db.execute(select(Metric).where(Metric.id == metric_id, Metric.is_active == True))
+    return result.scalar_one_or_none()
+
+
+async def get_metrics_by_coin(db: AsyncSession, coin_id: UUID) -> list[Metric]:
+    """Retrieve all metrics for a given coin."""
+    result = await db.execute(select(Metric).where(Metric.coin_id == coin_id, Metric.is_active == True))
+    return result.scalars().all()
+
+
+async def update_metric(
+    db: AsyncSession, db_metric: Metric, metric_in: MetricUpdate
+) -> Metric:
+    """Update a metric in the database."""
+    for field, value in metric_in.model_dump(exclude_unset=True).items():
+        setattr(db_metric, field, value)
     await db.commit()
     await db.refresh(db_metric)
-
     return db_metric
 
 
-async def get_metric_by_id(db: AsyncSession, metric_id: UUID):
-    """Retrieve a single metric by its ID."""
-    result = await db.execute(select(Metric).where(Metric.id == metric_id))
-    metric = result.scalar_one_or_none()
-
-    if metric is None:
-        return None
-
-    return MetricResponseSchema(
-        id=metric.id,
-        coin_id=metric.coin_id,
-        market_cap=MetricValueSchema(**metric.market_cap),  # ✅ Now correctly parsed
-        volume_24h=MetricValueSchema(**metric.volume_24h),
-        liquidity=MetricValueSchema(**metric.liquidity),
-        github_activity=metric.github_activity,
-        twitter_sentiment=metric.twitter_sentiment,
-        reddit_sentiment=metric.reddit_sentiment,
-        fetched_at=metric.fetched_at,
-        is_active=metric.is_active,
-        created_at=metric.created_at,
-    )
-
-
-async def get_metrics_by_coin(db: AsyncSession, coin_id: UUID):
-    """Retrieve all metrics for a given coin."""
-    result = await db.execute(select(Metric).where(Metric.coin_id == coin_id))
-    metrics = result.scalars().all()
-
-    return [
-        MetricResponseSchema(
-            id=metric.id,
-            coin_id=metric.coin_id,
-            market_cap=MetricValueSchema(**metric.market_cap),
-            volume_24h=MetricValueSchema(**metric.volume_24h),
-            liquidity=MetricValueSchema(**metric.liquidity),
-            github_activity=metric.github_activity,
-            twitter_sentiment=metric.twitter_sentiment,
-            reddit_sentiment=metric.reddit_sentiment,
-            fetched_at=metric.fetched_at,
-            is_active=metric.is_active,
-            created_at=metric.created_at,
-        )
-        for metric in metrics
-    ]
-
-
-async def delete_metric(db: AsyncSession, metric_id: UUID) -> bool:
-    """Delete a metric by its ID."""
-    result = await db.execute(delete(Metric).where(Metric.id == metric_id))
+async def delete_metric(db: AsyncSession, db_metric: Metric) -> None:
+    """Soft delete a metric."""
+    db_metric.is_active = False
     await db.commit()
-
-    return result.rowcount > 0  # Returns True if deletion was successful

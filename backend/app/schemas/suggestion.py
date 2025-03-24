@@ -1,34 +1,41 @@
-import uuid
 from datetime import datetime
+from enum import Enum
 from typing import Optional
+from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict
-
-from app.models.suggestion import SuggestionStatus
-
-
-class SuggestionBase(BaseModel):
-    note: Optional[str] = None
-
-    model_config = ConfigDict(from_attributes=True)
+from pydantic import Field as field
+from app.schemas import SchemaBase
 
 
-class SuggestionCreate(SuggestionBase):
-    coin_id: uuid.UUID
+class SuggestionStatus(str, Enum):
+    PENDING = "pending"
+    APPROVED = "approved"
+    REJECTED = "rejected"
 
 
-class SuggestionUpdate(BaseModel):
-    note: Optional[str] = None
-    status: Optional[SuggestionStatus] = None
+class SuggestionBase(SchemaBase):
+    coin_id: UUID
+    user_id: UUID
+    note: Optional[str] = field(default=None)
+
+
+class SuggestionCreate(SchemaBase):
+    coin_id: UUID
+    note: Optional[str] = field(default=None)
+
+
+class SuggestionUpdate(SchemaBase):
+    note: Optional[str] = field(default=None)
+
+
+class SuggestionManagerUpdate(SchemaBase):
+    note: Optional[str] = field(default=None)
+    status: Optional[SuggestionStatus] = field(default=None)
 
 
 class SuggestionOut(SuggestionBase):
-    id: uuid.UUID
-    coin_id: uuid.UUID
-    user_id: Optional[uuid.UUID] = None
+    id: UUID
     status: SuggestionStatus
     is_active: bool
     created_at: datetime
     updated_at: datetime
-
-    model_config = ConfigDict(from_attributes=True)

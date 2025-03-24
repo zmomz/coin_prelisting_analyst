@@ -1,7 +1,9 @@
 import uuid
 from enum import Enum as PyEnum
 
-from sqlalchemy import Boolean, Column, DateTime, Enum, ForeignKey, String, func
+from sqlalchemy import (
+    Boolean, Column, DateTime, Enum, ForeignKey, Text, func
+    )
 from sqlalchemy.dialects.postgresql import UUID
 
 from app.db.base import Base
@@ -16,7 +18,12 @@ class SuggestionStatus(PyEnum):
 class Suggestion(Base):
     __tablename__ = "suggestions"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
+    id = Column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        default=uuid.uuid4,
+        index=True
+    )
 
     coin_id = Column(
         UUID(as_uuid=True),
@@ -26,10 +33,10 @@ class Suggestion(Base):
     user_id = Column(
         UUID(as_uuid=True),
         ForeignKey("users.id", ondelete="SET NULL"),
-        nullable=True,
+        nullable=False,
     )
 
-    note = Column(String, nullable=True)
+    note = Column(Text, nullable=True)
     status = Column(
         Enum(SuggestionStatus, name="suggestionstatus"),
         default=SuggestionStatus.PENDING,

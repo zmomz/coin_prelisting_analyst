@@ -1,33 +1,26 @@
 from datetime import datetime
+from uuid import UUID
 
-from pydantic import UUID4, BaseModel, ConfigDict, Field
+from pydantic import Field as field
 
-
-class ScoringWeightBase(BaseModel):
-    liquidity_score: float = Field(..., ge=0.0, le=1.0)
-    developer_score: float = Field(..., ge=0.0, le=1.0)
-    community_score: float = Field(..., ge=0.0, le=1.0)
-    market_score: float = Field(..., ge=0.0, le=1.0)
+from app.schemas import SchemaBase
 
 
-# ✅ Input schema for creating a new ScoringWeight
-class ScoringWeightIn(ScoringWeightBase):
+class ScoringWeightBase(SchemaBase):
+    liquidity_score: float = field(ge=0.0, le=1.0)
+    developer_score: float = field(ge=0.0, le=1.0)
+    community_score: float = field(ge=0.0, le=1.0)
+    market_score: float = field(ge=0.0, le=1.0)
+
+
+class ScoringWeightCreate(ScoringWeightBase):
     pass
 
 
-# ✅ Input schema for updating an existing ScoringWeight
 class ScoringWeightUpdate(ScoringWeightBase):
     pass
 
 
-# ✅ Schema for database representation
-class ScoringWeightInDB(ScoringWeightBase):
-    id: UUID4
+class ScoringWeightOut(ScoringWeightBase):
+    id: UUID
     created_at: datetime
-
-    model_config = ConfigDict(from_attributes=True)
-
-
-# ✅ Output schema for API responses
-class ScoringWeightOut(ScoringWeightInDB):
-    pass

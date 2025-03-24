@@ -1,139 +1,105 @@
-"""API endpoints for managing coin listing suggestions from analysts."""
-
 import uuid
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_current_manager, get_current_user
+from app.api.deps import get_current_user
 from app.crud.suggestions import (
-    approve_suggestion,
     create_suggestion,
     delete_suggestion,
     get_suggestion,
-    get_suggestions,
-    reject_suggestion,
-    update_suggestion,
+    get_suggestions_by_coin,
+    update_suggestion_by_user,
+    update_suggestion_by_manager,
 )
 from app.db.session import get_db
-from app.models.suggestion import SuggestionStatus
-from app.models.user import User
-from app.schemas.suggestion import SuggestionCreate, SuggestionOut, SuggestionUpdate
+from app.models.user import User, UserRole
+from app.schemas.suggestion import (
+    SuggestionCreate,
+    SuggestionOut,
+    SuggestionUpdate,
+    SuggestionManagerUpdate,
+)
 
-router = APIRouter(prefix="/suggestions")
+router = APIRouter(
+    prefix="/suggestions",
+    tags=["suggestions"],
+    dependencies=[Depends(get_current_user)],  # 🔒 Require authentication globally
+)
 
 
-@router.post("/", response_model=SuggestionOut)
+@router.post("/", response_model=SuggestionOut, status_code=201)
 async def create_suggestion_endpoint(
     suggestion_in: SuggestionCreate,
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[User, Depends(get_current_user)],
 ):
-    """Analysts can create coin listing suggestions."""
-    return await create_suggestion(db, suggestion_in, current_user.id)
+    return await create_suggestion(
+        db=db,
+        coin_id=suggestion_in.coin_id,
+        user_id=current_user.id,
+        note=suggestion_in.note,
+    )
 
 
 @router.get("/{suggestion_id}", response_model=SuggestionOut)
 async def get_suggestion_endpoint(
-    suggestion_id: uuid.UUID, db: AsyncSession = Depends(get_db)
-):
-    """Retrieve a specific suggestion by ID."""
+    suggestion_id: uuid.UUID,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    _: Annotated[User, Depends(get_current_user)],
+) -> SuggestionOut:
+    """Get a suggestion by ID (authenticated users only)."""
     suggestion = await get_suggestion(db, suggestion_id)
     if not suggestion:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Suggestion not found"
-        )
+        raise HTTPException(status_code=404, detail="Suggestion not found")
     return suggestion
 
 
-@router.get("/", response_model=list[SuggestionOut])
-async def get_suggestions_endpoint(
-    db: AsyncSession = Depends(get_db), skip: int = 0, limit: int = 100
-):
-    """List all suggestions with pagination."""
-    return await get_suggestions(db, skip, limit)
+@router.get("/coin/{coin_id}", response_model=list[SuggestionOut])
+async def get_suggestions_by_coin_endpoint(
+    coin_id: uuid.UUID,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    _: Annotated[User, Depends(get_current_user)],
+) -> list[SuggestionOut]:
+    """Get all suggestions for a given coin (authenticated users only)."""
+    return await get_suggestions_by_coin(db, coin_id)
 
 
 @router.put("/{suggestion_id}", response_model=SuggestionOut)
 async def update_suggestion_endpoint(
     suggestion_id: uuid.UUID,
-    suggestion_in: SuggestionUpdate,
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-):
-    """Analysts can update their own suggestions before approval/rejection."""
+    update_in: SuggestionUpdate | SuggestionManagerUpdate,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[User, Depends(get_current_user)],
+) -> SuggestionOut:
+    """Update a suggestion (users update note, managers update note + status)."""
     suggestion = await get_suggestion(db, suggestion_id)
     if not suggestion:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Suggestion not found"
-        )
+        raise HTTPException(status_code=404, detail="Suggestion not found")
 
-    if suggestion.user_id != current_user.id and current_user.role != "manager":
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail="Permission denied"
-        )
+    if current_user.role == UserRole.MANAGER:
+        return await update_suggestion_by_manager(db, suggestion, update_in)  # type: ignore
 
-    return await update_suggestion(db, suggestion, suggestion_in)
+    if suggestion.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized")
 
-
-@router.post("/{suggestion_id}/approve")
-async def approve_suggestion_endpoint(
-    suggestion_id: uuid.UUID,
-    db: AsyncSession = Depends(get_db),
-    _: User = Depends(get_current_manager),
-):
-    """Approve a pending suggestion (manager only)."""
-    suggestion = await get_suggestion(db, suggestion_id)
-    if not suggestion:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Suggestion not found"
-        )
-
-    if suggestion.status != SuggestionStatus.PENDING:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Suggestion is already processed",
-        )
-
-    await approve_suggestion(db, suggestion)
-    return {"detail": "Suggestion approved"}
+    return await update_suggestion_by_user(db, suggestion, update_in)  # type: ignore
 
 
-@router.post("/{suggestion_id}/reject")
-async def reject_suggestion_endpoint(
-    suggestion_id: uuid.UUID,
-    db: AsyncSession = Depends(get_db),
-    _: User = Depends(get_current_manager),
-):
-    """Reject a pending suggestion (manager only)."""
-    suggestion = await get_suggestion(db, suggestion_id)
-    if not suggestion:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Suggestion not found"
-        )
-
-    if suggestion.status != SuggestionStatus.PENDING:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Suggestion is already processed",
-        )
-
-    await reject_suggestion(db, suggestion)
-    return {"detail": "Suggestion rejected"}
-
-
-@router.delete("/{suggestion_id}")
+@router.delete("/{suggestion_id}", status_code=status.HTTP_200_OK)
 async def delete_suggestion_endpoint(
     suggestion_id: uuid.UUID,
-    db: AsyncSession = Depends(get_db),
-    _: User = Depends(get_current_manager),
-):
-    """Soft delete a suggestion (manager only)."""
+    db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[User, Depends(get_current_user)],
+) -> dict:
+    """Soft delete a suggestion (owner or manager only)."""
     suggestion = await get_suggestion(db, suggestion_id)
     if not suggestion:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Suggestion not found"
-        )
+        raise HTTPException(status_code=404, detail="Suggestion not found")
+
+    if current_user.role != UserRole.MANAGER and suggestion.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized")
 
     await delete_suggestion(db, suggestion)
     return {"detail": "Suggestion deleted successfully"}

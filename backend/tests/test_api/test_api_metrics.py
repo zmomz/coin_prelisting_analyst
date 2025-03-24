@@ -1,92 +1,125 @@
+import uuid
 import pytest
+from sqlalchemy.sql import func
 from httpx import AsyncClient
-from sqlalchemy.future import select
 
+from app.schemas.metric import MetricOut, MetricValue
 from app.core.config import settings
-from app.models.metric import Metric
+from datetime import datetime
+
+URL = f"{settings.API_V1_STR}/metrics"
+
+
+def create_metric_payload(coin_id: str) -> dict:
+    return {
+        "coin_id": coin_id,
+        "market_cap": {"value": 1000000.0, "currency": "USD"},
+        "volume_24h": {"value": 50000.0, "currency": "USD"},
+        "liquidity": {"value": 250000.0, "currency": "USD"},
+        "github_activity": {"count": 250000.0},
+        "twitter_sentiment": {"score": 0.7},
+        "reddit_sentiment": {"score": 0.9},
+        "fetched_at": str(datetime.now())
+    }
 
 
 @pytest.mark.asyncio(loop_scope="session")
-async def test_get_metric(normal_client: AsyncClient, test_metrics, db_session):
-    """Test retrieving a single metric."""
-
-    # Fetch all metrics from DB
-    result = await db_session.execute(select(Metric))
-    all_metrics = result.scalars().all()
-    print("\n🚀 All metrics in DB before API call:", all_metrics)
-
-    # Ensure we have at least one metric to test
-    assert len(test_metrics) > 0, "❌ No test metrics available!"
-
-    # Select first metric
-    metric = test_metrics[0]
-
-    # Debug prints for ID verification
-    print(f"🆔 Metric ID for API Call: {metric.id} (Type: {type(metric.id)})")
-
-    # Verify if this metric exists in DB
-    db_result = await db_session.execute(select(Metric).where(Metric.id == metric.id))
-    db_metric = db_result.scalar_one_or_none()
-    print("✅ Metric found in DB:", db_metric)
-
-    # Ensure metric exists in DB
-    assert db_metric is not None, f"❌ Metric ID {metric.id} not found in DB!"
-
-    # Perform API request
-    response = await normal_client.get(
-        f"{settings.API_V1_STR}/metrics/{metric.id}"
-    )
-
-    print("📢 API Response Status Code:", response.status_code)
-    print("📢 API Response JSON:", response.json())
-
-    # Validate response
-    assert response.status_code == 200, f"❌ Expected 200, got {response.status_code}"
-
-
-@pytest.mark.asyncio(loop_scope="session")
-async def test_get_metrics_by_coin(
-    normal_client: AsyncClient, test_coin, test_metrics, db_session
-):
-    """Test retrieving all metrics for a specific coin."""
-
-    # Debug prints for Coin ID
-    print(f"\n🆔 Coin ID for API Call: {test_coin.id} (Type: {type(test_coin.id)})")
-
-    # Verify if this coin exists in DB
-    db_result = await db_session.execute(
-        select(Metric).where(Metric.coin_id == test_coin.id)
-    )
-    db_metrics = db_result.scalars().all()
-    print("✅ Metrics found in DB for Coin:", db_metrics)
-
-    # Ensure the coin has metrics
-    assert len(db_metrics) > 0, f"❌ No metrics found for Coin ID {test_coin.id}!"
-
-    # Perform API request
-    response = await normal_client.get(
-        f"{settings.API_V1_STR}/metrics/coin/{test_coin.id}"
-    )
-
-    print("📢 API Response Status Code:", response.status_code)
-    print("📢 API Response JSON:", response.json())
-
-    # Validate response
-    assert response.status_code == 200, f"❌ Expected 200, got {response.status_code}"
-
+async def test_create_metric(manager_client: AsyncClient, test_coin):
+    payload = create_metric_payload(str(test_coin.id))
+    response = await manager_client.post(f"{URL}/", json=payload)
+    assert response.status_code == 201
     data = response.json()
-    assert len(data) == len(
-        test_metrics
-    ), f"❌ Mismatch: Expected {len(test_metrics)}, got {len(data)}"
+    parsed = MetricOut.model_validate(data)
+    assert parsed.coin_id == test_coin.id
 
-    for i, metric in enumerate(test_metrics):
-        assert data[i]["id"] == str(metric.id), f"❌ Mismatch in metric ID at index {i}"
-        assert data[i]["coin_id"] == str(
-            metric.coin_id
-        ), f"❌ Mismatch in coin ID at index {i}"
-        assert (
-            data[i]["market_cap"]["value"] == metric.market_cap["value"]
-        ), f"❌ Market Cap mismatch at index {i}"
-        assert (
-            data[i]["market_cap"]["currency"] == "USD"
-        ), f"❌ Currency mismatch at index {i}"
+
+@pytest.mark.asyncio(loop_scope="session")
+async def test_create_metric_unauthorized(normal_client, test_coin):
+    payload = create_metric_payload(str(test_coin.id))
+    response = await normal_client.post(f"{URL}/", json=payload)
+    assert response.status_code == 403
+
+
+@pytest.mark.asyncio(loop_scope="session")
+async def test_create_metric_invalid(unauthorized_client, test_coin):
+    payload = create_metric_payload(str(test_coin.id))
+    payload.pop("market_cap")
+    response = await unauthorized_client.post(f"{URL}/", json=payload)
+    assert response.status_code == 401
+
+
+@pytest.mark.asyncio(loop_scope="session")
+async def test_get_metric_by_id(manager_client, test_metrics):
+    metric = test_metrics[0]
+    response = await manager_client.get(f"{URL}/{metric.id}")
+    assert response.status_code == 200
+    parsed = MetricOut.model_validate(response.json())
+    assert parsed.id == metric.id
+    assert parsed.coin_id == metric.coin_id
+
+
+@pytest.mark.asyncio(loop_scope="session")
+async def test_get_metric_not_found(manager_client):
+    response = await manager_client.get(f"{URL}/{uuid.uuid4()}")
+    assert response.status_code == 404
+
+
+@pytest.mark.asyncio(loop_scope="session")
+async def test_list_metrics_by_coin(manager_client, test_coin, test_metrics):
+    response = await manager_client.get(f"{URL}/coin/{test_coin.id}")
+    assert response.status_code == 200
+    data = response.json()
+    assert isinstance(data, list)
+    assert len(data) >= len(test_metrics)
+
+
+@pytest.mark.asyncio(loop_scope="session")
+async def test_update_metric(manager_client, test_metrics):
+    metric = test_metrics[0]
+    update = {
+        "github_activity": {"count": 250000.0},
+        "twitter_sentiment": {"score": 0.7},
+    }
+    response = await manager_client.put(f"{URL}/{metric.id}", json=update)
+    assert response.status_code == 200
+    data = response.json()
+    assert data["github_activity"] == {"count": 250000.0}
+    assert data["twitter_sentiment"]["score"] == 0.7
+
+
+@pytest.mark.asyncio(loop_scope="session")
+async def test_update_metric_unauthorized(normal_client, test_metrics):
+    metric = test_metrics[0]
+    response = await normal_client.put(f"{URL}/{metric.id}", json={"github_activity": {"count": 1}})
+    assert response.status_code == 403
+
+
+@pytest.mark.asyncio(loop_scope="session")
+async def test_update_metric_not_found(manager_client):
+    response = await manager_client.put(f"{URL}/{uuid.uuid4()}", json={"github_activity": {"count": 1}})
+    assert response.status_code == 404
+
+
+@pytest.mark.asyncio(loop_scope="session")
+async def test_delete_metric(manager_client, test_metrics):
+    metric = test_metrics[0]
+    response = await manager_client.delete(f"{URL}/{metric.id}")
+    assert response.status_code == 200
+    assert response.json()["detail"] == "Metric deleted successfully"
+
+    # Ensure it no longer shows up
+    response = await manager_client.get(f"{URL}/{metric.id}")
+    assert response.status_code == 404
+
+
+@pytest.mark.asyncio(loop_scope="session")
+async def test_delete_metric_unauthorized(normal_client, test_metrics):
+    metric = test_metrics[0]
+    response = await normal_client.delete(f"{URL}/{metric.id}")
+    assert response.status_code == 403
+
+
+@pytest.mark.asyncio(loop_scope="session")
+async def test_delete_metric_not_found(manager_client):
+    response = await manager_client.delete(f"{URL}/{uuid.uuid4()}")
+    assert response.status_code == 404
