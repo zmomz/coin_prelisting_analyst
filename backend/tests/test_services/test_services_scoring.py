@@ -1,6 +1,7 @@
 import pytest
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.models.score import Score
 from app.services.scoring import recalculate_scores_service
 
@@ -10,7 +11,7 @@ async def test_recalculate_scores_no_coins(db_session: AsyncSession):
     """
     If there are no active coins in the DB, the service should return:
     {"success": False, "error": "No active coins found"}.
-    
+
     We do NOT call `test_coin` here, so no coins get created.
     """
     result = await recalculate_scores_service(db_session)
@@ -21,10 +22,10 @@ async def test_recalculate_scores_no_coins(db_session: AsyncSession):
 @pytest.mark.asyncio(loop_scope="session")
 async def test_recalculate_scores_no_weights(db_session: AsyncSession, test_coin):
     """
-    If there is at least one active coin but NO scoring weight, 
+    If there is at least one active coin but NO scoring weight,
     the service should return:
     {"success": False, "error": "No scoring weights found"}.
-    
+
     Here `test_coin` fixture creates an active coin automatically.
     We do NOT call `scoring_weight`, so no weight is created.
     """
@@ -35,12 +36,14 @@ async def test_recalculate_scores_no_weights(db_session: AsyncSession, test_coin
 
 
 @pytest.mark.asyncio(loop_scope="session")
-async def test_recalculate_scores_happy_path(db_session: AsyncSession, test_coin, test_metrics, scoring_weight):
+async def test_recalculate_scores_happy_path(
+    db_session: AsyncSession, test_coin, test_metrics, scoring_weight
+):
     """
-    If we have at least one active coin, at least one metric, 
-    and a scoring weight, the service should create Score entries 
+    If we have at least one active coin, at least one metric,
+    and a scoring weight, the service should create Score entries
     and return success.
-    
+
     - test_coin fixture -> creates a single active coin
     - test_metrics fixture -> creates multiple metrics for that coin
     - scoring_weight fixture -> creates one valid ScoringWeight

@@ -1,7 +1,8 @@
 import uuid
+from typing import Optional
+
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
-from typing import List, Optional
 
 from app.models.suggestion import Suggestion, SuggestionStatus
 from app.schemas.suggestion import SuggestionCreate, SuggestionUpdate
@@ -17,21 +18,22 @@ async def create_suggestion(
     return suggestion
 
 
-async def get_suggestion(db: AsyncSession, suggestion_id: uuid.UUID) -> Optional[Suggestion]:
+async def get_suggestion(
+    db: AsyncSession, suggestion_id: uuid.UUID
+) -> Optional[Suggestion]:
     result = await db.execute(
-        select(Suggestion).where(Suggestion.id == suggestion_id, Suggestion.is_active == True)
+        select(Suggestion).where(
+            Suggestion.id == suggestion_id, Suggestion.is_active == True
+        )
     )
     return result.scalar_one_or_none()
 
 
 async def get_suggestions(
     db: AsyncSession, skip: int = 0, limit: int = 100
-) -> List[Suggestion]:
+) -> list[Suggestion]:
     result = await db.execute(
-        select(Suggestion)
-        .where(Suggestion.is_active == True)
-        .offset(skip)
-        .limit(limit)
+        select(Suggestion).where(Suggestion.is_active == True).offset(skip).limit(limit)
     )
     return result.scalars().all()
 

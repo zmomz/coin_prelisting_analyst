@@ -1,10 +1,12 @@
 import logging
-from sqlalchemy import select, func
+
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.models.coin import Coin
 from app.models.metric import Metric
-from app.models.scoring_weight import ScoringWeight
 from app.models.score import Score
+from app.models.scoring_weight import ScoringWeight
 from app.schemas.score import ScoreIn
 
 logger = logging.getLogger(__name__)
@@ -16,9 +18,7 @@ async def recalculate_scores_service(db: AsyncSession):
     """
     try:
         # Step 1) Gather active coins
-        coin_ids_result = await db.execute(
-            select(Coin.id).where(Coin.is_active)
-        )
+        coin_ids_result = await db.execute(select(Coin.id).where(Coin.is_active))
         coin_ids = [row[0] for row in coin_ids_result.fetchall()]
 
         if not coin_ids:
@@ -34,7 +34,7 @@ async def recalculate_scores_service(db: AsyncSession):
         latest_metrics_subq = (
             select(
                 Metric.coin_id.label("coin_id"),
-                func.max(Metric.fetched_at).label("max_fetched_at")
+                func.max(Metric.fetched_at).label("max_fetched_at"),
             )
             .where(Metric.coin_id.in_(coin_ids))
             .group_by(Metric.coin_id)
@@ -42,13 +42,10 @@ async def recalculate_scores_service(db: AsyncSession):
         )
 
         # Step 4) join subquery back to Metric table
-        metrics_stmt = (
-            select(Metric)
-            .join(
-                latest_metrics_subq,
-                (Metric.coin_id == latest_metrics_subq.c.coin_id)
-                & (Metric.fetched_at == latest_metrics_subq.c.max_fetched_at)
-            )
+        metrics_stmt = select(Metric).join(
+            latest_metrics_subq,
+            (Metric.coin_id == latest_metrics_subq.c.coin_id)
+            & (Metric.fetched_at == latest_metrics_subq.c.max_fetched_at),
         )
         metrics_list = (await db.execute(metrics_stmt)).scalars().all()
 

@@ -1,8 +1,10 @@
-from passlib.context import CryptContext
-from jose import jwt
-from datetime import datetime, timedelta
-from app.core.config import settings
 import uuid
+from datetime import datetime, timedelta
+
+from jose import jwt
+from passlib.context import CryptContext
+
+from app.core.config import settings
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
@@ -14,7 +16,9 @@ def create_access_token(data: dict | str | uuid.UUID, expires_delta: int = None)
     else:
         to_encode = data.copy()
 
-    expires_delta = settings.ACCESS_TOKEN_EXPIRE_MINUTES if expires_delta is None else expires_delta
+    expires_delta = (
+        settings.ACCESS_TOKEN_EXPIRE_MINUTES if expires_delta is None else expires_delta
+    )
     if isinstance(expires_delta, timedelta):
         expires_delta = int(expires_delta.total_seconds() / 60)
 

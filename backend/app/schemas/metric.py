@@ -1,7 +1,8 @@
-from pydantic import BaseModel, ConfigDict
-from typing import Dict, Optional
-from uuid import UUID
 from datetime import datetime
+from typing import Optional
+from uuid import UUID
+
+from pydantic import BaseModel, ConfigDict
 
 
 class MetricValueSchema(BaseModel):
@@ -11,6 +12,7 @@ class MetricValueSchema(BaseModel):
 
 class MetricCreate(BaseModel):
     """Schema for creating a new metric entry."""
+
     coin_id: UUID
     market_cap: MetricValueSchema
     volume_24h: MetricValueSchema
@@ -27,9 +29,9 @@ class MetricResponseSchema(BaseModel):
     market_cap: MetricValueSchema
     volume_24h: MetricValueSchema
     liquidity: MetricValueSchema
-    github_activity: Dict[str, int]
-    twitter_sentiment: Dict[str, float]
-    reddit_sentiment: Dict[str, float]
+    github_activity: dict[str, int]
+    twitter_sentiment: dict[str, float]
+    reddit_sentiment: dict[str, float]
     fetched_at: datetime
     is_active: bool
     created_at: datetime

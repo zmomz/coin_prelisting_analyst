@@ -28,19 +28,16 @@ celery_app.conf.beat_schedule = {
         "task": "app.tasks.coin_data.update_coins_list",
         "schedule": crontab(hour=0, minute=0),  # Once daily at midnight UTC
     },
-
     # 📊 Fetch and store metrics (every 6 hours)
     "fetch_coin_data": {
         "task": "app.tasks.coin_data.fetch_coin_data",
         "schedule": 60 * 60 * 6,  # every 6 hours
     },
-
     # 📈 Recalculate all coin scores
     "recalculate_scores": {
         "task": "app.tasks.scoring.recalculate_scores",
         "schedule": 60 * 60 * 6,  # every 6 hours
     },
-
     # 🔔 Notify about pending suggestions
     "notify_pending_suggestions": {
         "task": "app.tasks.notifications.notify_pending_suggestions",

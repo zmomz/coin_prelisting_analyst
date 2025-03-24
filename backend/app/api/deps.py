@@ -1,5 +1,6 @@
 """Dependency functions for API endpoints."""
 
+import logging
 import uuid
 
 from fastapi import Depends, HTTPException, status
@@ -11,7 +12,6 @@ from app.core.config import settings
 from app.crud.users import get_user
 from app.db.session import get_db
 from app.models.user import User, UserRole
-import logging
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl=f"{settings.API_V1_STR}/auth/login")
 
@@ -57,18 +57,16 @@ async def get_current_user(
     if not user.is_active:
         logger.error(f"❌ User {user.email} is deactivated!")
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Inactive user"
+            status_code=status.HTTP_403_FORBIDDEN, detail="Inactive user"
         )
 
     logger.info(f"✅ User Retrieved: {user.email}, Role: {user.role}")
     return user
 
 
-
 async def get_current_manager(current_user: User = Depends(get_current_user)) -> User:
     """Get the currently authenticated manager user."""
-    
+
     if current_user is None:
         logger.error("🚨 ERROR: No current user retrieved!")
         raise HTTPException(status_code=401, detail="User not authenticated")
@@ -77,14 +75,18 @@ async def get_current_manager(current_user: User = Depends(get_current_user)) ->
         logger.error(f"🚨 ERROR: User object missing role! User={current_user}")
         raise HTTPException(status_code=500, detail="User role is missing")
 
-    logger.info(f"🔍 Checking Manager Access: {current_user.email}, Role: {current_user.role}")
+    logger.info(
+        f"🔍 Checking Manager Access: {current_user.email}, Role: {current_user.role}"
+    )
 
     if current_user.role is None:
         logger.error(f"🚨 ERROR: User role is None! User={current_user}")
         raise HTTPException(status_code=500, detail="User role is missing")
 
     if current_user.role != UserRole.MANAGER:
-        logger.warning(f"❌ ACCESS DENIED: {current_user.email} is {current_user.role}, not a manager!")
+        logger.warning(
+            f"❌ ACCESS DENIED: {current_user.email} is {current_user.role}, not a manager!"
+        )
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Not enough permissions",
@@ -92,4 +94,3 @@ async def get_current_manager(current_user: User = Depends(get_current_user)) ->
 
     logger.info("✅ Access Granted: User is a manager.")
     return current_user
-

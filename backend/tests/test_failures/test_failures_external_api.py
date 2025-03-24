@@ -1,10 +1,12 @@
-import pytest
-import httpx
 from unittest.mock import AsyncMock, patch
+
+import httpx
+import pytest
+
 from app.utils.api_clients.coingecko import fetch_coin_market_data
 from app.utils.api_clients.github import fetch_github_activity
-from app.utils.api_clients.twitter import fetch_twitter_sentiment
 from app.utils.api_clients.reddit import fetch_reddit_sentiment
+from app.utils.api_clients.twitter import fetch_twitter_sentiment
 
 
 @pytest.mark.asyncio(loop_scope="session")
@@ -15,11 +17,13 @@ async def test_fetch_coin_market_data_api_failure(mock_get):
     # Prepare a fake response that simulates HTTP 500
     mock_response = AsyncMock()
     mock_response.status_code = 500
-    mock_response.raise_for_status = AsyncMock(side_effect=httpx.HTTPStatusError(
-        "Internal Server Error",
-        request=httpx.Request("GET", "https://api.coingecko.com/api/v3/coins/btc"),
-        response=httpx.Response(500),
-    ))
+    mock_response.raise_for_status = AsyncMock(
+        side_effect=httpx.HTTPStatusError(
+            "Internal Server Error",
+            request=httpx.Request("GET", "https://api.coingecko.com/api/v3/coins/btc"),
+            response=httpx.Response(500),
+        )
+    )
     mock_response.json = AsyncMock()
 
     mock_get.return_value = mock_response

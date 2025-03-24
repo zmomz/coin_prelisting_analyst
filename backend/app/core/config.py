@@ -1,4 +1,5 @@
-from typing import List, Optional
+from typing import Optional
+
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings
 
@@ -32,7 +33,7 @@ class Settings(BaseSettings):
     SLACK_WEBHOOK_URL: Optional[str] = None
 
     # CORS
-    BACKEND_CORS_ORIGINS: List[str] = Field(default_factory=list)
+    BACKEND_CORS_ORIGINS: list[str] = Field(default_factory=list)
 
     # Environment
     ENVIRONMENT: str = Field("development")
@@ -63,13 +64,13 @@ class Settings(BaseSettings):
             "SLACK_WEBHOOK_URL": "SLACK_WEBHOOK_URL",
             "BACKEND_CORS_ORIGINS": "BACKEND_CORS_ORIGINS",
             "ENVIRONMENT": "ENVIRONMENT",
-            "LOG_LEVEL": "LOG_LEVEL"
-        }
+            "LOG_LEVEL": "LOG_LEVEL",
+        },
     }
 
     @field_validator("BACKEND_CORS_ORIGINS", mode="before")
     @classmethod
-    def parse_origins(cls, value: str | List[str]) -> List[str]:
+    def parse_origins(cls, value: str | list[str]) -> list[str]:
         if isinstance(value, str):
             return [v.strip() for v in value.split(",") if v.strip()]
         return value

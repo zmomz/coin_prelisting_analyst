@@ -1,5 +1,7 @@
-from sqlalchemy import Column, String, JSON
+from sqlalchemy import JSON, Column, String
+
 from app.db.base import Base
+
 
 class Config(Base):
     __tablename__ = "config"

@@ -1,17 +1,21 @@
 import asyncio
 import logging
+
 from sqlalchemy import select
+from sqlalchemy.orm import Session, sessionmaker
+
 from app.celery_app import celery_app
 from app.db.session import AsyncSessionLocal
-from app.services.notifications import send_slack_notification
 from app.models.suggestion import Suggestion, SuggestionStatus
-from sqlalchemy.orm import sessionmaker, Session
+from app.services.notifications import send_slack_notification
 
 logger = logging.getLogger(__name__)
 
 
 @celery_app.task(name="app.tasks.notifications.notify_pending_suggestions")
-def notify_pending_suggestions(session_maker: sessionmaker[Session] = AsyncSessionLocal):
+def notify_pending_suggestions(
+    session_maker: sessionmaker[Session] = AsyncSessionLocal,
+):
     """Entrypoint for Celery to run the async logic."""
     asyncio.run(notify_pending_suggestions_async(session_maker))
 

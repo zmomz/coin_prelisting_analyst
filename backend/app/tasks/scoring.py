@@ -1,5 +1,6 @@
 import asyncio
 import logging
+
 from app.celery_app import celery_app
 from app.db.session import AsyncSessionLocal
 from app.services.scoring import recalculate_scores_service
@@ -22,4 +23,6 @@ async def recalculate_scores_async():
         if not result["success"]:
             logger.error(f"Score recalculation failed: {result['error']}")
         else:
-            logger.info(f"Score recalculation complete. Updated {result['updated_scores']} scores.")
+            logger.info(
+                f"Score recalculation complete. Updated {result['updated_scores']} scores."
+            )

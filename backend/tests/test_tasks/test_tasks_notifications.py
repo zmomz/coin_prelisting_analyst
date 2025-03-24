@@ -1,12 +1,17 @@
-import pytest
 from unittest.mock import AsyncMock, patch
-from app.tasks.notifications import notify_pending_suggestions_async
-from app.db.session import AsyncSession
+
+import pytest
 from conftest import TestingSessionLocal
+
+from app.db.session import AsyncSession
+from app.tasks.notifications import notify_pending_suggestions_async
+
 
 @pytest.mark.asyncio(loop_scope="session")
 @patch("app.tasks.notifications.send_slack_notification", new_callable=AsyncMock)
-async def test_no_pending_suggestions(mock_slack, db_session: AsyncSession, test_suggestion_approved):
+async def test_no_pending_suggestions(
+    mock_slack, db_session: AsyncSession, test_suggestion_approved
+):
     """
     If there are no pending suggestions, Slack should NOT be called.
     """
@@ -18,9 +23,11 @@ async def test_no_pending_suggestions(mock_slack, db_session: AsyncSession, test
 
 @pytest.mark.asyncio(loop_scope="session")
 @patch("app.tasks.notifications.send_slack_notification", new_callable=AsyncMock)
-async def test_some_pending_suggestions(mock_slack, db_session: AsyncSession, test_suggestion_pending):
+async def test_some_pending_suggestions(
+    mock_slack, db_session: AsyncSession, test_suggestion_pending
+):
     """
-    If there's at least 1 suggestion with status=PENDING, 
+    If there's at least 1 suggestion with status=PENDING,
     we should call Slack with the correct message.
     """
     await notify_pending_suggestions_async(TestingSessionLocal)

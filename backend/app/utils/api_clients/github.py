@@ -1,8 +1,9 @@
+from typing import Optional
+
 import httpx
-from typing import Optional, Dict
 
 
-async def fetch_github_activity(github_url: str) -> Optional[Dict]:
+async def fetch_github_activity(github_url: str) -> Optional[dict]:
     """Fetch GitHub activity data from a repository URL."""
     if not github_url:
         return None

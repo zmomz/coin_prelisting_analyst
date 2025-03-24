@@ -1,5 +1,6 @@
+from unittest.mock import AsyncMock, MagicMock, patch
+
 import pytest
-from unittest.mock import patch, AsyncMock, MagicMock
 
 
 class DummyMetric:
@@ -35,7 +36,7 @@ async def test_update_all_coin_metrics(
             "x": "https://x.com/test",
             "reddit": "https://reddit.com/r/test",
             "telegram": "https://t.me/test",
-            "website": "https://coin.com"
+            "website": "https://coin.com",
         }
 
         mock_session = AsyncMock()
@@ -47,8 +48,11 @@ async def test_update_all_coin_metrics(
         mock_engine.dispose = AsyncMock()
         mock_create_engine.return_value = mock_engine
 
-        with patch("app.services.coin_updater.sessionmaker", return_value=mock_session_factory):
+        with patch(
+            "app.services.coin_updater.sessionmaker", return_value=mock_session_factory
+        ):
             from app.services.coin_updater import update_all_coin_metrics
+
             await update_all_coin_metrics()
 
         mock_get_coins.assert_awaited_once()

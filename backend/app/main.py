@@ -1,14 +1,18 @@
-from app.core.logging import logger
 from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from starlette.middleware.cors import CORSMiddleware
 
-from app.api.v1 import auth, coins, suggestions, users, metrics
+from app.api.v1 import auth, coins, metrics, suggestions, users
 from app.core.config import settings
-
+from app.core.logging import logger
 
 # API version prefix
-API_PREFIX = settings.API_V1_STR if settings.API_V1_STR.startswith("/") else f"/{settings.API_V1_STR}"
+API_PREFIX = (
+    settings.API_V1_STR
+    if settings.API_V1_STR.startswith("/")
+    else f"/{settings.API_V1_STR}"
+)
 logger.info(f"API running with prefix: {API_PREFIX}")
 
 # Optional: OpenAPI tag groups for Swagger
@@ -22,12 +26,14 @@ tags_metadata = [
     {"name": "root", "description": "Root welcome route"},
 ]
 
+
 # FastAPI lifespan handler
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info("Starting up the Coin Prelisting API...")
     yield
     logger.info("Shutting down the Coin Prelisting API...")
+
 
 # Create app instance
 app = FastAPI(
@@ -36,7 +42,7 @@ app = FastAPI(
     version="1.0.0",
     openapi_url=f"{API_PREFIX}/openapi.json",
     lifespan=lifespan,
-    openapi_tags=tags_metadata
+    openapi_tags=tags_metadata,
 )
 
 # Apply CORS middleware
@@ -48,16 +54,19 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
 # Health check
 @app.get("/api/health", tags=["health"])
 async def health_check():
     logger.info("Health check passed.")
     return {"status": "ok"}
 
+
 # Root route
 @app.get("/", tags=["root"])
 async def root():
     return {"message": "Welcome to the Coin Prelisting API!"}
+
 
 # Include versioned API routers
 app.include_router(auth.router, prefix=API_PREFIX, tags=["auth"])

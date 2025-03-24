@@ -1,13 +1,15 @@
-from fastapi import HTTPException
+import logging
 import uuid
+from typing import Optional
+
+from fastapi import HTTPException
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
-from typing import List, Optional
 
 from app.models.coin import Coin
 from app.schemas.coin import CoinCreate, CoinUpdate
-from sqlalchemy.exc import IntegrityError
-import logging
+
 logger = logging.getLogger(__name__)
 
 
@@ -21,7 +23,9 @@ async def create_coin(db: AsyncSession, coin_in: CoinCreate) -> Coin:
     except IntegrityError as e:
         await db.rollback()  # ✅ Rollback the transaction on failure
         logger.error(f"🚨 Database Integrity Error: {e}")
-        raise HTTPException(status_code=409, detail="Coin symbol already exists")  # ✅ Return 409 Conflict
+        raise HTTPException(
+            status_code=409, detail="Coin symbol already exists"
+        )  # ✅ Return 409 Conflict
 
 
 async def get_coin(db: AsyncSession, coin_id: uuid.UUID) -> Optional[Coin]:
@@ -38,21 +42,14 @@ async def get_coin_by_symbol(db: AsyncSession, symbol: str) -> Optional[Coin]:
     return result.scalar_one_or_none()
 
 
-async def get_coins(
-    db: AsyncSession, skip: int = 0, limit: int = 100
-) -> List[Coin]:
+async def get_coins(db: AsyncSession, skip: int = 0, limit: int = 100) -> list[Coin]:
     result = await db.execute(
-        select(Coin)
-        .where(Coin.is_active == True)
-        .offset(skip)
-        .limit(limit)
+        select(Coin).where(Coin.is_active == True).offset(skip).limit(limit)
     )
     return result.scalars().all()
 
 
-async def update_coin(
-    db: AsyncSession, db_coin: Coin, coin_in: CoinUpdate
-) -> Coin:
+async def update_coin(db: AsyncSession, db_coin: Coin, coin_in: CoinUpdate) -> Coin:
     for field, value in coin_in.model_dump(exclude_unset=True).items():
         setattr(db_coin, field, value)
     await db.commit()

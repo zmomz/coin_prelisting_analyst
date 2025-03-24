@@ -1,10 +1,11 @@
+from typing import Optional
+
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
-from typing import List, Optional
 
+from app.core.security import get_password_hash
 from app.models.user import User
 from app.schemas.user import UserCreate, UserUpdate
-from app.core.security import get_password_hash
 
 
 async def create_user(db: AsyncSession, user_in: UserCreate) -> User:
@@ -49,21 +50,14 @@ async def get_user_by_email(db: AsyncSession, email: str) -> Optional[User]:
     return result.scalar_one_or_none()
 
 
-async def get_users(
-    db: AsyncSession, skip: int = 0, limit: int = 100
-) -> List[User]:
+async def get_users(db: AsyncSession, skip: int = 0, limit: int = 100) -> list[User]:
     result = await db.execute(
-        select(User)
-        .where(User.is_active == True)
-        .offset(skip)
-        .limit(limit)
+        select(User).where(User.is_active == True).offset(skip).limit(limit)
     )
     return result.scalars().all()
 
 
-async def update_user(
-    db: AsyncSession, db_user: User, user_in: UserUpdate
-) -> User:
+async def update_user(db: AsyncSession, db_user: User, user_in: UserUpdate) -> User:
     for field, value in user_in.model_dump(exclude_unset=True).items():
         if field == "password":  # Hash new password if provided
             value = get_password_hash(value)

@@ -1,6 +1,7 @@
 import logging
 import logging.config
 import sys
+
 from app.core.config import settings
 
 LOG_FORMAT = "%(asctime)s [%(levelname)s] %(name)s: %(message)s"
@@ -29,9 +30,21 @@ def configure_logging():
             "handlers": ["console"],
         },
         "loggers": {
-            "uvicorn": {"level": LOG_LEVEL, "handlers": ["console"], "propagate": False},
-            "uvicorn.error": {"level": LOG_LEVEL, "handlers": ["console"], "propagate": False},
-            "uvicorn.access": {"level": LOG_LEVEL, "handlers": ["console"], "propagate": False},
+            "uvicorn": {
+                "level": LOG_LEVEL,
+                "handlers": ["console"],
+                "propagate": False,
+            },
+            "uvicorn.error": {
+                "level": LOG_LEVEL,
+                "handlers": ["console"],
+                "propagate": False,
+            },
+            "uvicorn.access": {
+                "level": LOG_LEVEL,
+                "handlers": ["console"],
+                "propagate": False,
+            },
             "celery": {"level": LOG_LEVEL, "handlers": ["console"], "propagate": False},
             "app": {"level": LOG_LEVEL, "handlers": ["console"], "propagate": False},
         },

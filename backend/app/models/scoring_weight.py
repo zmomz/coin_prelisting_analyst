@@ -1,9 +1,11 @@
-from sqlalchemy import Column, Integer, Float, DateTime
-from datetime import datetime
-from app.db.base import Base
-from sqlalchemy.orm import relationship
 import uuid
+from datetime import datetime
+
+from sqlalchemy import Column, DateTime, Float
 from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.orm import relationship
+
+from app.db.base import Base
 
 
 class ScoringWeight(Base):

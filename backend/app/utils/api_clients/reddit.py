@@ -1,9 +1,11 @@
+from typing import Optional
+
 import httpx
-from typing import Optional, List, Dict
+
 from app.core.config import settings
 
 
-async def fetch_reddit_sentiment(subreddit: str) -> Optional[List[Dict]]:
+async def fetch_reddit_sentiment(subreddit: str) -> Optional[list[dict]]:
     """Fetch recent Reddit posts from a given subreddit and analyze sentiment."""
     if not subreddit:
         return None

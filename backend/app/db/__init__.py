@@ -1,3 +1,3 @@
 """Database package."""
 
-from .base import Base  # noqa 
+from .base import Base  # noqa

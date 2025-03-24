@@ -1,7 +1,8 @@
 import uuid
+from typing import Optional
+
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
-from typing import Optional
 
 from app.models.metric import Metric
 
@@ -23,5 +24,5 @@ async def get_latest_metrics(db: AsyncSession, coin_id: uuid.UUID) -> Optional[d
             "fetched_at": metric.fetched_at,
             "values": metric.values,  # Adjust based on actual column names
         }
-    
+
     return None

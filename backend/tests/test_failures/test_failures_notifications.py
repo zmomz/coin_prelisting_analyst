@@ -1,7 +1,9 @@
-import pytest
 from unittest.mock import AsyncMock, patch
-from app.services.notifications import send_slack_notification
+
 import httpx
+import pytest
+
+from app.services.notifications import send_slack_notification
 
 
 @pytest.mark.asyncio(loop_scope="session")
@@ -9,7 +11,10 @@ async def test_missing_webhook_url(monkeypatch):
     """If SLACK_WEBHOOK_URL is missing or placeholder, it should return an error."""
     # 1) Force the config to be empty or the placeholder
     from app.core.config import settings
-    monkeypatch.setattr(settings, "SLACK_WEBHOOK_URL", None)  # or "your_slack_webhook_url_here"
+
+    monkeypatch.setattr(
+        settings, "SLACK_WEBHOOK_URL", None
+    )  # or "your_slack_webhook_url_here"
 
     # 2) Call the function
     result = await send_slack_notification("Hello Slack")
@@ -38,6 +43,7 @@ async def test_successful_notification(MockAsyncClient):
 
     # 3) Force the config to have a valid Slack URL
     from app.core.config import settings
+
     original_url = settings.SLACK_WEBHOOK_URL
     settings.SLACK_WEBHOOK_URL = "https://hooks.slack.com/services/REAL_WEBHOOK_URL"
 
@@ -66,7 +72,7 @@ async def test_failed_notification(MockAsyncClient):
     mock_response.raise_for_status.side_effect = httpx.HTTPStatusError(
         message="Slack returned 500",
         request=httpx.Request("POST", "https://fake-slack-url"),
-        response=httpx.Response(status_code=500, content=b"Something went wrong")
+        response=httpx.Response(status_code=500, content=b"Something went wrong"),
     )
 
     mock_client_instance = AsyncMock()
@@ -75,6 +81,7 @@ async def test_failed_notification(MockAsyncClient):
     MockAsyncClient.return_value = mock_client_instance
 
     from app.core.config import settings
+
     original_url = settings.SLACK_WEBHOOK_URL
     settings.SLACK_WEBHOOK_URL = "https://hooks.slack.com/services/REAL_WEBHOOK_URL"
 
@@ -102,6 +109,7 @@ async def test_no_content_response(MockAsyncClient):
     MockAsyncClient.return_value = mock_client_instance
 
     from app.core.config import settings
+
     original_url = settings.SLACK_WEBHOOK_URL
     settings.SLACK_WEBHOOK_URL = "https://hooks.slack.com/services/REAL_WEBHOOK_URL"
 
@@ -120,11 +128,14 @@ async def test_request_error(MockAsyncClient):
     """
     mock_client_instance = AsyncMock()
     # Simulate any request-level error (e.g. timeout, DNS fail) by raising RequestError
-    mock_client_instance.post.side_effect = httpx.RequestError("Network fail", request=httpx.Request("POST", ""))
+    mock_client_instance.post.side_effect = httpx.RequestError(
+        "Network fail", request=httpx.Request("POST", "")
+    )
     mock_client_instance.__aenter__.return_value = mock_client_instance
     MockAsyncClient.return_value = mock_client_instance
 
     from app.core.config import settings
+
     original_url = settings.SLACK_WEBHOOK_URL
     settings.SLACK_WEBHOOK_URL = "https://hooks.slack.com/services/REAL_WEBHOOK_URL"
 

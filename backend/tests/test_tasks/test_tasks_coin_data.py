@@ -1,6 +1,7 @@
-from unittest.mock import patch
-from app.tasks import coin_data
 import types
+from unittest.mock import patch
+
+from app.tasks import coin_data
 
 
 def test_fetch_coin_data_task():

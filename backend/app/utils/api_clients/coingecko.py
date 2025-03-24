@@ -1,10 +1,12 @@
+import asyncio
+from datetime import datetime
+from typing import Optional
+
 import httpx
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.models import Coin
-from datetime import datetime
-import asyncio
-from typing import Optional, Dict
 from sqlalchemy.sql import text
+
+from app.models import Coin
 
 
 async def fetch_and_store_coins(db_session: AsyncSession):
@@ -25,7 +27,12 @@ async def fetch_and_store_coins(db_session: AsyncSession):
             print(f"✅ Fetched {len(coins_data)} coins from CoinGecko.")
 
             # Query existing coins in the database
-            existing_coins = {coin.coingeckoid for coin in await db_session.execute(text("SELECT coingeckoid FROM coins"))}
+            existing_coins = {
+                coin.coingeckoid
+                for coin in await db_session.execute(
+                    text("SELECT coingeckoid FROM coins")
+                )
+            }
 
             new_coins = []
             for coin in coins_data:
@@ -35,7 +42,7 @@ async def fetch_and_store_coins(db_session: AsyncSession):
                             name=coin["name"],
                             symbol=coin["symbol"].upper(),
                             coingeckoid=coin["id"],
-                            created_at=datetime.now()
+                            created_at=datetime.now(),
                         )
                     )
 
@@ -54,7 +61,7 @@ async def fetch_and_store_coins(db_session: AsyncSession):
         print(f"An error occurred: {err}")
 
 
-async def fetch_coin_market_data(coin_id: str, retries: int = 5) -> Optional[Dict]:
+async def fetch_coin_market_data(coin_id: str, retries: int = 5) -> Optional[dict]:
     """Fetch market data for a given coin from CoinGecko with retry logic."""
 
     url = f"https://api.coingecko.com/api/v3/coins/{coin_id}"
@@ -71,7 +78,9 @@ async def fetch_coin_market_data(coin_id: str, retries: int = 5) -> Optional[Dic
                 if not coin_data:
                     return None
 
-                github_list = coin_data.get("links", {}).get("repos_url", {}).get("github") or [""]
+                github_list = coin_data.get("links", {}).get("repos_url", {}).get(
+                    "github"
+                ) or [""]
                 github_url = github_list[0] if github_list else ""
 
                 return {
@@ -84,12 +93,20 @@ async def fetch_coin_market_data(coin_id: str, retries: int = 5) -> Optional[Dic
                     "telegram": f"https://t.me/{coin_data.get('links', {}).get('telegram_channel_identifier', '')}",
                     "website": coin_data.get("links", {}).get("homepage", [""])[0],
                     "coingeckoid": coin_data.get("id"),
-                    "market_cap": coin_data.get("market_data", {}).get("market_cap", {}).get("usd", 0),
-                    "total_volume": coin_data.get("market_data", {}).get("total_volume", {}).get("usd", 0),
+                    "market_cap": coin_data.get("market_data", {})
+                    .get("market_cap", {})
+                    .get("usd", 0),
+                    "total_volume": coin_data.get("market_data", {})
+                    .get("total_volume", {})
+                    .get("usd", 0),
                     "liquidity_score": coin_data.get("liquidity_score", 0),
                     "developer_data": coin_data.get("developer_data", {}),
-                    "sentiment_votes_up_percentage": coin_data.get("sentiment_votes_up_percentage", 0.0),
-                    "sentiment_votes_down_percentage": coin_data.get("sentiment_votes_down_percentage", 0.0),
+                    "sentiment_votes_up_percentage": coin_data.get(
+                        "sentiment_votes_up_percentage", 0.0
+                    ),
+                    "sentiment_votes_down_percentage": coin_data.get(
+                        "sentiment_votes_down_percentage", 0.0
+                    ),
                 }
 
             except httpx.HTTPStatusError as http_err:
@@ -101,11 +118,15 @@ async def fetch_coin_market_data(coin_id: str, retries: int = 5) -> Optional[Dic
 
             # Handle rate limits and retry logic
             if response and response.status_code == 429:
-                print(f"⚠️ Rate limited. Retrying in {delay} seconds... (Attempt {attempt + 1}/{retries})")
+                print(
+                    f"⚠️ Rate limited. Retrying in {delay} seconds... (Attempt {attempt + 1}/{retries})"
+                )
                 await asyncio.sleep(delay)
                 delay *= 2
             elif response:
-                print(f"⚠️ Error with status code {response.status_code}. Retrying in {delay} seconds... (Attempt {attempt + 1}/{retries})")
+                print(
+                    f"⚠️ Error with status code {response.status_code}. Retrying in {delay} seconds... (Attempt {attempt + 1}/{retries})"
+                )
                 await asyncio.sleep(delay)
                 delay *= 2
 

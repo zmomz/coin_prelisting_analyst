@@ -1,5 +1,6 @@
-from pydantic import BaseModel, UUID4, Field, ConfigDict
 from datetime import datetime
+
+from pydantic import UUID4, BaseModel, ConfigDict, Field
 
 
 class ScoreBase(BaseModel):

@@ -1,14 +1,16 @@
+from typing import Optional
+
 import httpx
-from typing import Optional, List, Dict
+
 from app.core.config import settings
 
 
-async def fetch_twitter_sentiment(twitter_handle: str) -> Optional[List[Dict]]:
+async def fetch_twitter_sentiment(twitter_handle: str) -> Optional[list[dict]]:
     """Fetch recent tweets and analyze sentiment for a given Twitter handle."""
     if not twitter_handle:
         return None
 
-    url = f"https://api.twitter.com/2/tweets/search/recent"
+    url = "https://api.twitter.com/2/tweets/search/recent"
     headers = {"Authorization": f"Bearer {settings.TWITTER_BEARER_TOKEN}"}
     params = {
         "query": f"from:{twitter_handle} -is:retweet",

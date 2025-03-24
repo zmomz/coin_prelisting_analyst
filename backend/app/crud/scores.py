@@ -1,7 +1,9 @@
 import uuid
+from typing import Optional
+
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
-from typing import Optional
+
 from app.models.score import Score
 from app.schemas.score import ScoreIn, ScoreOut
 

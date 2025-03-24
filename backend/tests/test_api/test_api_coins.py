@@ -1,12 +1,10 @@
-import pytest
 import logging
-from httpx import AsyncClient, request
-from app.core.config import settings
 import uuid
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.future import select
-from app.models.coin import Coin
-from sqlalchemy import delete
+
+import pytest
+from httpx import AsyncClient
+
+from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -25,10 +23,9 @@ def create_payload() -> dict:
         "description": "A test coin",
         "github": "https://github.com/test/test",
         "coingeckoid": unique_symbol,
-        "is_active": True
+        "is_active": True,
     }
     return request_payload
-
 
 
 @pytest.mark.asyncio(loop_scope="session")
@@ -38,7 +35,9 @@ async def test_create_coin(manager_client: AsyncClient):
     request_payload = create_payload()
     response = await manager_client.post(url=URL, json=request_payload)
 
-    assert response.status_code == 201, f"Expected 201 but got {response.status_code} with response {response.json()}"
+    assert (
+        response.status_code == 201
+    ), f"Expected 201 but got {response.status_code} with response {response.json()}"
 
 
 @pytest.mark.asyncio(loop_scope="session")
@@ -64,9 +63,7 @@ async def test_create_coin_forbidden(authenticated_client: AsyncClient):
 @pytest.mark.asyncio(loop_scope="session")
 async def test_get_coin(manager_client: AsyncClient, test_coin):
     """Test getting a coin by ID."""
-    response = await manager_client.get(  # ✅ Added `await`
-        f"{URL}{test_coin.id}"
-    )
+    response = await manager_client.get(f"{URL}{test_coin.id}")  # ✅ Added `await`
     assert response.status_code == 200
 
 
@@ -85,7 +82,9 @@ async def test_get_coin_not_found(manager_client: AsyncClient):
 @pytest.mark.asyncio(loop_scope="session")
 async def test_list_coins(manager_client: AsyncClient, test_coins):
     """Test listing all coins."""
-    response = await manager_client.get(f"{settings.API_V1_STR}/coins/")  # ✅ Added `await`
+    response = await manager_client.get(
+        f"{settings.API_V1_STR}/coins/"
+    )  # ✅ Added `await`
     assert response.status_code == 200
     data = response.json()
     assert isinstance(data, list)
@@ -111,14 +110,15 @@ async def test_update_coin(manager_client: AsyncClient, test_coin):
             "name": "Updated Coin",
             "symbol": unique_symbol,  # ✅ Use a unique symbol to avoid conflicts
             "description": "An updated coin",
-            "github": "https://github.com/test/updated"
-        }
+            "github": "https://github.com/test/updated",
+        },
     )
 
     print("🔍 Update Coin Response:", response.status_code, response.json())
 
-    assert response.status_code == 200, f"Expected 200 but got {response.status_code} with response {response.json()}"
-
+    assert (
+        response.status_code == 200
+    ), f"Expected 200 but got {response.status_code} with response {response.json()}"
 
 
 @pytest.mark.asyncio(loop_scope="session")

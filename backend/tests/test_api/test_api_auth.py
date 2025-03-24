@@ -1,6 +1,9 @@
-import pytest
 import uuid
+
+import pytest
+
 from app.core.config import settings
+
 
 @pytest.mark.asyncio(loop_scope="session")
 async def test_register_user(unauthorized_client):
@@ -8,7 +11,7 @@ async def test_register_user(unauthorized_client):
     unique_email = f"newuser-{uuid.uuid4().hex[:8]}@example.com"
     response = await unauthorized_client.post(
         f"{settings.API_V1_STR}/auth/register",
-        json={"email": unique_email, "password": "securepass", "name": "New User"}
+        json={"email": unique_email, "password": "securepass", "name": "New User"},
     )
 
     print("Register Response:", response.json())  # Debugging
@@ -29,7 +32,7 @@ async def test_login_user(unauthorized_client):
     # Register user first
     register_response = await unauthorized_client.post(
         f"{settings.API_V1_STR}/auth/register",
-        json={"email": unique_email, "password": password, "name": "Test User"}
+        json={"email": unique_email, "password": password, "name": "Test User"},
     )
 
     print("Register Response:", register_response.json())  # Debugging
@@ -39,7 +42,10 @@ async def test_login_user(unauthorized_client):
     # Then login with JSON body
     response = await unauthorized_client.post(
         f"{settings.API_V1_STR}/auth/login",
-        json={"email": unique_email, "password": password}  # Corrected to match new API
+        json={
+            "email": unique_email,
+            "password": password,
+        },  # Corrected to match new API
     )
 
     print("Login Response:", response.json())  # Debugging
@@ -50,13 +56,15 @@ async def test_login_user(unauthorized_client):
     assert data["token_type"] == "bearer"
 
 
-
 @pytest.mark.asyncio(loop_scope="session")
 async def test_login_invalid_credentials(unauthorized_client):
     """Test login with invalid credentials."""
     response = await unauthorized_client.post(
         f"{settings.API_V1_STR}/auth/login",
-        json={"email": "wrong@example.com", "password": "wrongpass"}  # ✅ Corrected format
+        json={
+            "email": "wrong@example.com",
+            "password": "wrongpass",
+        },  # ✅ Corrected format
     )
 
     print("Invalid Login Response:", response.json())  # Debugging
@@ -65,4 +73,3 @@ async def test_login_invalid_credentials(unauthorized_client):
     data = response.json()
     assert "detail" in data
     assert data["detail"] == "Incorrect email or password"
-

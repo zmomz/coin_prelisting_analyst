@@ -1,12 +1,16 @@
+from uuid import UUID
+
+from sqlalchemy import delete
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
-from uuid import UUID
+
 from app.models.metric import Metric
-from app.schemas.metric import MetricResponseSchema, MetricValueSchema, MetricCreate
-from sqlalchemy import delete
+from app.schemas.metric import MetricCreate, MetricResponseSchema, MetricValueSchema
 
 
-async def create_metric(db: AsyncSession, metric_data: MetricCreate) -> MetricResponseSchema:
+async def create_metric(
+    db: AsyncSession, metric_data: MetricCreate
+) -> MetricResponseSchema:
     """Create a new metric entry in the database."""
     metric_dict = metric_data.model_dump()  # ✅ Convert Pydantic model to dictionary
 

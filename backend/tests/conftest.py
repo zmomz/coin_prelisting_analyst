@@ -1,15 +1,14 @@
-import pytest
-import pytest_asyncio
 import uuid
 from datetime import datetime
 
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
+import pytest
+import pytest_asyncio
+from asgi_lifespan import LifespanManager
+from httpx import ASGITransport, AsyncClient
+from sqlalchemy import delete
+from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.sql import text
-from sqlalchemy import delete
-
-from httpx import AsyncClient, ASGITransport
-from asgi_lifespan import LifespanManager
 
 from app.core.config import settings
 from app.core.logging import configure_logging
@@ -17,16 +16,17 @@ from app.core.security import create_access_token
 from app.db.base import Base
 from app.db.session import get_db
 from app.main import app
-from app.models.user import User, UserRole
 from app.models.coin import Coin
 from app.models.metric import Metric
 from app.models.scoring_weight import ScoringWeight
+from app.models.user import User, UserRole
 
 
 # ✅ Configure logging using central setup
 @pytest.fixture(scope="session", autouse=True)
 def setup_logging():
     configure_logging()
+
 
 ###############################################################################
 #                               DATABASE SETUP
@@ -44,6 +44,7 @@ TestingSessionLocal = sessionmaker(
     autocommit=False,
     autoflush=False,
 )
+
 
 @pytest_asyncio.fixture(scope="session", autouse=True)
 async def init_test_db():
@@ -84,16 +85,26 @@ async def clean_db(db_session: AsyncSession):
     Truncate all tables before each test to ensure a clean DB.
     This fixture runs automatically (autouse=True) for every test function.
     """
-    tables = ["coins", "metrics", "scores", "scoring_weights", "suggestions",
-              "user_activities", "users"]
+    tables = [
+        "coins",
+        "metrics",
+        "scores",
+        "scoring_weights",
+        "suggestions",
+        "user_activities",
+        "users",
+    ]
     for table in tables:
-        await db_session.execute(text(f'TRUNCATE TABLE "{table}" RESTART IDENTITY CASCADE'))
+        await db_session.execute(
+            text(f'TRUNCATE TABLE "{table}" RESTART IDENTITY CASCADE')
+        )
     await db_session.commit()
 
 
 ###############################################################################
 #                     OVERRIDE FastAPI's get_db DEPENDENCY
 ###############################################################################
+
 
 @pytest_asyncio.fixture(scope="session", autouse=True)
 async def override_get_db():
@@ -114,6 +125,7 @@ async def override_get_db():
 ###############################################################################
 #                          IN-PROCESS TEST CLIENT
 ###############################################################################
+
 
 @pytest_asyncio.fixture(scope="session")
 async def client(init_test_db, override_get_db):
@@ -145,6 +157,7 @@ async def unauthorized_client(init_test_db, override_get_db):
 ###############################################################################
 #                               TEST FIXTURES
 ###############################################################################
+
 
 @pytest_asyncio.fixture(scope="function")
 async def test_user(db_session):
@@ -189,7 +202,12 @@ async def manager_client(client: AsyncClient, db_session: AsyncSession):
     # Register a manager
     register_response = await client.post(
         "/api/v1/auth/register",
-        json={"email": unique_email, "password": "testpassword", "name": "Test Manager", "role": "manager"},
+        json={
+            "email": unique_email,
+            "password": "testpassword",
+            "name": "Test Manager",
+            "role": "manager",
+        },
     )
     assert register_response.status_code == 201, register_response.text
 
@@ -234,22 +252,22 @@ async def test_coins(db_session):
             "symbol": "btc",
             "name": "Bitcoin",
             "description": "Bitcoin (BTC) is a cryptocurrency.",
-            "github": "https://github.com/bitcoin"
+            "github": "https://github.com/bitcoin",
         },
         {
             "id": "ethereum",
             "symbol": "eth",
             "name": "Ethereum",
             "description": "Ethereum (ETH) is a cryptocurrency.",
-            "github": "https://github.com/ethereum"
+            "github": "https://github.com/ethereum",
         },
         {
             "id": "solana",
             "symbol": "sol",
             "name": "Solana",
             "description": "Solana (SOL) is a cryptocurrency.",
-            "github": "https://github.com/solana-labs"
-        }
+            "github": "https://github.com/solana-labs",
+        },
     ]
 
     created_coins = []
@@ -306,6 +324,7 @@ async def test_metrics(db_session, test_coin):
 async def test_suggestion_pending(db_session, test_coin, test_user):
     """Creates a single test suggestion."""
     from app.models.suggestion import Suggestion, SuggestionStatus
+
     suggestion = Suggestion(
         id=uuid.uuid4(),
         coin_id=test_coin.id,
@@ -319,10 +338,12 @@ async def test_suggestion_pending(db_session, test_coin, test_user):
     await db_session.refresh(suggestion)
     return suggestion
 
+
 @pytest_asyncio.fixture(scope="function")
 async def test_suggestion_approved(db_session, test_coin, test_user):
     """Creates a single test suggestion."""
     from app.models.suggestion import Suggestion, SuggestionStatus
+
     suggestion = Suggestion(
         id=uuid.uuid4(),
         coin_id=test_coin.id,
@@ -356,6 +377,7 @@ async def scoring_weight(db_session: AsyncSession):
 #                            OPTIONAL DEBUG FIXTURE
 ###############################################################################
 
+
 @pytest_asyncio.fixture(scope="session", autouse=True)
 async def debug_db(init_test_db):
     """
@@ -369,16 +391,22 @@ async def debug_db(init_test_db):
         print(f"✅ Connected to database: {db_name}")
 
         # Check available tables
-        result = await conn.execute(text("SELECT tablename FROM pg_tables WHERE schemaname = 'public'"))
+        result = await conn.execute(
+            text("SELECT tablename FROM pg_tables WHERE schemaname = 'public'")
+        )
         tables = [row[0] for row in result.fetchall()]
         print(f"📌 Tables in database: {tables}")
 
         # Check structure of 'metrics' table
-        result = await conn.execute(text("""
+        result = await conn.execute(
+            text(
+                """
             SELECT column_name, data_type
             FROM information_schema.columns
             WHERE table_name = 'metrics'
-        """))
+        """
+            )
+        )
         columns = result.fetchall()
         print(f"🛠 Metric table columns: {columns}")
 

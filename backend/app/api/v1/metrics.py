@@ -1,9 +1,11 @@
+from uuid import UUID
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
-from uuid import UUID
+
+from app.crud.metrics import get_metric_by_id, get_metrics_by_coin
 from app.db.session import get_db
 from app.schemas.metric import MetricResponseSchema
-from app.crud.metrics import get_metric_by_id, get_metrics_by_coin
 
 router = APIRouter(prefix="/metrics", tags=["metrics"])
 

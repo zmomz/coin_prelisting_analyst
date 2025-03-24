@@ -1,6 +1,7 @@
-from app.services.coin_updater import update_all_coin_metrics, update_coin_list
-from app.celery_app import celery_app
 import asyncio
+
+from app.celery_app import celery_app
+from app.services.coin_updater import update_all_coin_metrics, update_coin_list
 
 
 @celery_app.task(name="app.tasks.coin_data.update_coins_list")

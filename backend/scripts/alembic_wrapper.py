@@ -24,7 +24,9 @@ def run_alembic_command(command, *args):
         ini_file = config["ini_file"]
         migrations_folder = config["migrations_folder"]
 
-        print(f"\n[INFO] Running '{command} {args}' for {ini_file} ({migrations_folder})")
+        print(
+            f"\n[INFO] Running '{command} {args}' for {ini_file} ({migrations_folder})"
+        )
 
         cmd = ["alembic", "-c", ini_file, command] + list(args)
 

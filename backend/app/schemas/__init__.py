@@ -1,1 +1,1 @@
-"""Schema definitions for API data validation.""" 
+"""Schema definitions for API data validation."""

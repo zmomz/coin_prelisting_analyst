@@ -1,6 +1,8 @@
-import httpx
-from app.core.config import settings
 from typing import Optional
+
+import httpx
+
+from app.core.config import settings
 
 
 async def send_slack_notification(message: str) -> Optional[str]:

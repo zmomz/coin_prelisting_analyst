@@ -1,14 +1,17 @@
-import pytest
 import uuid
-from sqlalchemy.ext.asyncio import AsyncSession
+from datetime import datetime
+
+import pytest
 from sqlalchemy import select
-from app.tasks.scoring import recalculate_scores_async
-from app.services.scoring import recalculate_scores_service
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.models.coin import Coin
 from app.models.metric import Metric
 from app.models.score import Score
 from app.models.scoring_weight import ScoringWeight
-from datetime import datetime
+from app.services.scoring import recalculate_scores_service
+from app.tasks.scoring import recalculate_scores_async
+
 
 @pytest.mark.asyncio(loop_scope="session")
 async def test_no_coins(db_session: AsyncSession):
@@ -24,7 +27,7 @@ async def test_no_coins(db_session: AsyncSession):
 @pytest.mark.asyncio(loop_scope="session")
 async def test_no_weights(db_session: AsyncSession):
     """
-    If we have an active coin but no scoring weight, 
+    If we have an active coin but no scoring weight,
     we get "No scoring weights found".
     """
     coin = Coin(
@@ -74,7 +77,7 @@ async def test_happy_path(db_session: AsyncSession):
         twitter_sentiment={"score": 0.6},
         reddit_sentiment={"score": 0.7},
         fetched_at=datetime.now(),
-        is_active=True
+        is_active=True,
     )
     db_session.add(metric)
 
@@ -95,22 +98,25 @@ async def test_happy_path(db_session: AsyncSession):
     assert result["updated_scores"] == 1
 
     # 5) Confirm a Score row was created
-    score_rows = (await db_session.execute(
-        select(Score).where(Score.coin_id == coin_id)
-    )).scalars().all()
+    score_rows = (
+        (await db_session.execute(select(Score).where(Score.coin_id == coin_id)))
+        .scalars()
+        .all()
+    )
     assert len(score_rows) == 1
     new_score = score_rows[0]
     assert 0 <= new_score.final_score <= 1
 
+
 @pytest.mark.asyncio(loop_scope="session")
 async def test_celery_wrapper(db_session: AsyncSession):
     """
-    Test the celery wrapper `recalculate_scores_async` to ensure it 
-    calls the same logic. 
+    Test the celery wrapper `recalculate_scores_async` to ensure it
+    calls the same logic.
     """
     # If no coins, same result
     result = await recalculate_scores_async()
-    # Our code returns None, but logs "No active coins" internally. 
+    # Our code returns None, but logs "No active coins" internally.
     # The real logic is in recalculate_scores_service
     # So we can't do much here except ensure it doesn't crash.
     # If you want, you can patch recalc service or check logs.

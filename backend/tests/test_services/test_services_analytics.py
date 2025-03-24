@@ -1,9 +1,10 @@
 import pytest
-from sqlalchemy.ext.asyncio import AsyncSession
-from app.services.analytics import get_latest_metrics
-from app.schemas.metric import MetricResponseSchema
-from app.models.metric import Metric
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.models.metric import Metric
+from app.schemas.metric import MetricResponseSchema
+from app.services.analytics import get_latest_metrics
 
 
 @pytest.mark.asyncio(loop_scope="session")
