@@ -1,8 +1,8 @@
-"""new migration
+"""init2
 
-Revision ID: 39a9d9b9ef65
+Revision ID: 6393c8bd193d
 Revises: 
-Create Date: 2025-03-12 19:52:58.101182
+Create Date: 2025-03-24 06:27:13.838388
 
 """
 from typing import Sequence, Union
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision: str = '39a9d9b9ef65'
+revision: str = '6393c8bd193d'
 down_revision: Union[str, None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -25,18 +25,21 @@ def upgrade() -> None:
     sa.Column('id', sa.UUID(), nullable=False),
     sa.Column('name', sa.String(), nullable=False),
     sa.Column('symbol', sa.String(), nullable=False),
+    sa.Column('coingeckoid', sa.String(), nullable=False),
     sa.Column('description', sa.String(), nullable=True),
     sa.Column('github', sa.String(), nullable=True),
     sa.Column('x', sa.String(), nullable=True),
     sa.Column('reddit', sa.String(), nullable=True),
     sa.Column('telegram', sa.String(), nullable=True),
     sa.Column('website', sa.String(), nullable=True),
-    sa.Column('is_active', sa.Boolean(), nullable=True),
-    sa.Column('created_at', sa.DateTime(), nullable=True),
+    sa.Column('is_active', sa.Boolean(), nullable=False),
+    sa.Column('created_at', sa.DateTime(), server_default=sa.text("timezone('UTC', CURRENT_TIMESTAMP)"), nullable=False),
     sa.PrimaryKeyConstraint('id')
     )
+    op.create_index(op.f('ix_coins_coingeckoid'), 'coins', ['coingeckoid'], unique=True)
     op.create_index(op.f('ix_coins_id'), 'coins', ['id'], unique=False)
-    op.create_index(op.f('ix_coins_symbol'), 'coins', ['symbol'], unique=True)
+    op.create_index(op.f('ix_coins_name'), 'coins', ['name'], unique=False)
+    op.create_index(op.f('ix_coins_symbol'), 'coins', ['symbol'], unique=False)
     op.create_table('scoring_weights',
     sa.Column('id', sa.UUID(), nullable=False),
     sa.Column('liquidity_score', sa.Float(), nullable=False),
@@ -63,8 +66,8 @@ def upgrade() -> None:
     sa.Column('hashed_password', sa.String(), nullable=False),
     sa.Column('name', sa.String(), nullable=True),
     sa.Column('role', sa.Enum('ANALYST', 'MANAGER', name='userrole'), nullable=False),
-    sa.Column('is_active', sa.Boolean(), nullable=True),
-    sa.Column('created_at', sa.DateTime(), nullable=True),
+    sa.Column('is_active', sa.Boolean(), nullable=False),
+    sa.Column('created_at', sa.DateTime(), server_default=sa.text("timezone('UTC', CURRENT_TIMESTAMP)"), nullable=False),
     sa.PrimaryKeyConstraint('id')
     )
     op.create_index(op.f('ix_users_email'), 'users', ['email'], unique=True)
@@ -78,9 +81,9 @@ def upgrade() -> None:
     sa.Column('github_activity', sa.JSON(), nullable=True),
     sa.Column('twitter_sentiment', sa.JSON(), nullable=True),
     sa.Column('reddit_sentiment', sa.JSON(), nullable=True),
-    sa.Column('fetched_at', sa.DateTime(), server_default=sa.text('now()'), nullable=False),
+    sa.Column('fetched_at', sa.DateTime(), server_default=sa.text("timezone('UTC', CURRENT_TIMESTAMP)"), nullable=False),
     sa.Column('is_active', sa.Boolean(), nullable=False),
-    sa.Column('created_at', sa.DateTime(), server_default=sa.text('now()'), nullable=False),
+    sa.Column('created_at', sa.DateTime(), server_default=sa.text("timezone('UTC', CURRENT_TIMESTAMP)"), nullable=False),
     sa.ForeignKeyConstraint(['coin_id'], ['coins.id'], ondelete='CASCADE'),
     sa.PrimaryKeyConstraint('id')
     )
@@ -95,10 +98,11 @@ def upgrade() -> None:
     sa.Column('community_score', sa.Float(), nullable=False),
     sa.Column('market_score', sa.Float(), nullable=False),
     sa.Column('final_score', sa.Float(), nullable=False),
-    sa.Column('created_at', sa.DateTime(), nullable=True),
+    sa.Column('created_at', sa.DateTime(), server_default=sa.text("timezone('UTC', CURRENT_TIMESTAMP)"), nullable=False),
     sa.ForeignKeyConstraint(['coin_id'], ['coins.id'], ondelete='CASCADE'),
     sa.ForeignKeyConstraint(['scoring_weight_id'], ['scoring_weights.id'], ondelete='CASCADE'),
-    sa.PrimaryKeyConstraint('id')
+    sa.PrimaryKeyConstraint('id'),
+    sa.UniqueConstraint('coin_id', 'scoring_weight_id', name='uix_coin_weight')
     )
     op.create_index(op.f('ix_scores_id'), 'scores', ['id'], unique=False)
     op.create_table('suggestions',
@@ -136,6 +140,8 @@ def downgrade() -> None:
     op.drop_index(op.f('ix_scoring_weights_id'), table_name='scoring_weights')
     op.drop_table('scoring_weights')
     op.drop_index(op.f('ix_coins_symbol'), table_name='coins')
+    op.drop_index(op.f('ix_coins_name'), table_name='coins')
     op.drop_index(op.f('ix_coins_id'), table_name='coins')
+    op.drop_index(op.f('ix_coins_coingeckoid'), table_name='coins')
     op.drop_table('coins')
     # ### end Alembic commands ###
