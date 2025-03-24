@@ -2,43 +2,41 @@ import uuid
 from datetime import datetime
 from typing import Optional
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import Field as field
+from app.schemas import SchemaBase
 
 
-class CoinBase(BaseModel):
+class CoinBase(SchemaBase):
     name: str
     symbol: str
     coingeckoid: str
-    description: Optional[str] = None
-    github: Optional[str] = None
-    x: Optional[str] = None
-    reddit: Optional[str] = None
-    telegram: Optional[str] = None
-    website: Optional[str] = None
+    description: Optional[str] = field(default=None)
+    github: Optional[str] = field(default=None)
+    x: Optional[str] = field(default=None)
+    reddit: Optional[str] = field(default=None)
+    telegram: Optional[str] = field(default=None)
+    website: Optional[str] = field(default=None)
 
 
 class CoinCreate(CoinBase):
-    id: uuid.UUID = Field(default_factory=uuid.uuid4)
-    is_active: bool = True
-    created_at: datetime = Field(default_factory=datetime.now)
+    id: uuid.UUID = field(default_factory=uuid.uuid4)
+    is_active: bool = field(default=True)
 
 
-class CoinUpdate(BaseModel):
-    name: Optional[str] = None
-    symbol: Optional[str] = None
-    coingeckoid: Optional[str] = None
-    description: Optional[str] = None
-    github: Optional[str] = None
-    x: Optional[str] = None
-    reddit: Optional[str] = None
-    telegram: Optional[str] = None
-    website: Optional[str] = None
-    is_active: Optional[bool] = None
+class CoinUpdate(SchemaBase):
+    name: Optional[str] = field(default=None)
+    symbol: Optional[str] = field(default=None)
+    coingeckoid: Optional[str] = field(default=None)
+    description: Optional[str] = field(default=None)
+    github: Optional[str] = field(default=None)
+    x: Optional[str] = field(default=None)
+    reddit: Optional[str] = field(default=None)
+    telegram: Optional[str] = field(default=None)
+    website: Optional[str] = field(default=None)
+    is_active: Optional[bool] = field(default=None)
 
 
 class CoinOut(CoinBase):
     id: uuid.UUID
     is_active: bool
     created_at: datetime
-
-    model_config = ConfigDict(from_attributes=True)

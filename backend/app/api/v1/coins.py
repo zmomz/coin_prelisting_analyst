@@ -20,35 +20,32 @@ async def create_coin_endpoint(
     coin_in: CoinCreate,
     db: Annotated[AsyncSession, Depends(get_db)],
     _: Annotated[User, Depends(get_current_manager)],
-):
+) -> CoinOut:
     """Only Managers can create new coins."""
-    try:
-        coin = await create_coin(db, coin_in)
-        return coin
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    return await create_coin(db, coin_in)
 
 
 @router.get("/{coin_id}", response_model=CoinOut)
 async def get_coin_endpoint(
-    coin_id: uuid.UUID, db: Annotated[AsyncSession, Depends(get_db)]
-):
+    coin_id: uuid.UUID,
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> CoinOut:
     """Retrieve a coin by ID."""
-    print(f"🛠 DEBUG: Querying Coin ID -> {coin_id}")
     coin = await get_coin(db, coin_id)
     if not coin:
-        print(f"❌ DEBUG: Coin NOT FOUND in DB for ID -> {coin_id}")
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Coin not found"
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Coin not found",
         )
-    print(f"✅ DEBUG: Found Coin in DB -> {coin.id}, Name: {coin.name}")
     return coin
 
 
 @router.get("/", response_model=list[CoinOut])
 async def get_coins_endpoint(
-    db: Annotated[AsyncSession, Depends(get_db)], skip: int = 0, limit: int = 100
-):
+    db: Annotated[AsyncSession, Depends(get_db)],
+    skip: int = 0,
+    limit: int = 100,
+) -> list[CoinOut]:
     """List all coins with pagination."""
     return await get_coins(db, skip, limit)
 
@@ -57,30 +54,31 @@ async def get_coins_endpoint(
 async def update_coin_endpoint(
     coin_id: uuid.UUID,
     coin_in: CoinUpdate,
-    _: Annotated[User, Depends(get_current_manager)],  # ✅ Enforce Manager role first
+    _: Annotated[User, Depends(get_current_manager)],
     db: Annotated[AsyncSession, Depends(get_db)],
-):
+) -> CoinOut:
     """Only Managers can update a coin."""
     coin = await get_coin(db, coin_id)
     if not coin:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Coin not found"
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Coin not found",
         )
-
     return await update_coin(db, coin, coin_in)
 
 
 @router.delete("/{coin_id}", status_code=status.HTTP_200_OK)
 async def delete_coin_endpoint(
     coin_id: uuid.UUID,
-    _: Annotated[User, Depends(get_current_manager)],  # ✅ Enforce Manager role first
+    _: Annotated[User, Depends(get_current_manager)],
     db: Annotated[AsyncSession, Depends(get_db)],
-):
+) -> dict:
     """Only Managers can soft delete a coin."""
     coin = await get_coin(db, coin_id)
     if not coin:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Coin not found"
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Coin not found",
         )
 
     await delete_coin(db, coin)
