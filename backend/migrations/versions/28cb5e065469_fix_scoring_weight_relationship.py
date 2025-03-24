@@ -7,7 +7,7 @@ Create Date: 2025-03-12 02:54:33.405791
 """
 from typing import Sequence, Union
 
-from alembic import op
+from scripts.alembic import op
 import sqlalchemy as sa
 
 

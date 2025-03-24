@@ -4,11 +4,11 @@ import os
 # Define the Alembic configurations
 ALEMBIC_CONFIGS = [
     {
-        "ini_file": "alembic_main.ini",
+        "ini_file": "migrations/main/alembic_main.ini",
         "migrations_folder": "migrations/main",
     },
     {
-        "ini_file": "alembic_test.ini",
+        "ini_file": "migrations/test/alembic_test.ini",
         "migrations_folder": "migrations/test",
     },
 ]
