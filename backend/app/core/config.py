@@ -1,7 +1,7 @@
-from typing import Optional
+from typing import Optional, Union
 
 from pydantic import Field, field_validator
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
@@ -39,38 +39,16 @@ class Settings(BaseSettings):
     ENVIRONMENT: str = Field("development")
     LOG_LEVEL: str = Field("INFO")
 
-    model_config = {
-        "env_file": ".env",
-        "env_file_encoding": "utf-8",
-        "case_sensitive": True,
-        "extra": "allow",
-        "env_map": {
-            "PROJECT_NAME": "PROJECT_NAME",
-            "API_V1_STR": "API_V1_STR",
-            "SECRET_KEY": "SECRET_KEY",
-            "ACCESS_TOKEN_EXPIRE_MINUTES": "ACCESS_TOKEN_EXPIRE_MINUTES",
-            "DATABASE_URL": "DATABASE_URL",
-            "TEST_DATABASE_URL": "TEST_DATABASE_URL",
-            "REDIS_URL": "REDIS_URL",
-            "CELERY_BROKER_URL": "CELERY_BROKER_URL",
-            "CELERY_RESULT_BACKEND": "CELERY_RESULT_BACKEND",
-            "COINGECKO_API_URL": "COINGECKO_API_URL",
-            "GITHUB_API_URL": "GITHUB_API_URL",
-            "GITHUB_TOKEN": "GITHUB_TOKEN",
-            "TWITTER_BEARER_TOKEN": "TWITTER_BEARER_TOKEN",
-            "REDDIT_CLIENT_ID": "REDDIT_CLIENT_ID",
-            "REDDIT_CLIENT_SECRET": "REDDIT_CLIENT_SECRET",
-            "REDDIT_USER_AGENT": "REDDIT_USER_AGENT",
-            "SLACK_WEBHOOK_URL": "SLACK_WEBHOOK_URL",
-            "BACKEND_CORS_ORIGINS": "BACKEND_CORS_ORIGINS",
-            "ENVIRONMENT": "ENVIRONMENT",
-            "LOG_LEVEL": "LOG_LEVEL",
-        },
-    }
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        case_sensitive=True,
+        extra="allow",
+    )
 
     @field_validator("BACKEND_CORS_ORIGINS", mode="before")
     @classmethod
-    def parse_origins(cls, value: str | list[str]) -> list[str]:
+    def parse_origins(cls, value: Union[str, list[str]]) -> list[str]:
         if isinstance(value, str):
             return [v.strip() for v in value.split(",") if v.strip()]
         return value
