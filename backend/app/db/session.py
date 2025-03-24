@@ -1,28 +1,31 @@
+from collections.abc import AsyncGenerator
+
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 
 from app.core.config import settings
 
-# Ensure correct async connection settings
+# Async SQLAlchemy Engine
 engine = create_async_engine(
-    settings.DATABASE_URL, echo=True, future=True  # ✅ Logs SQL queries to help debug
+    settings.DATABASE_URL,
+    echo=True,
+    future=True,
 )
 
-SessionLocal = sessionmaker(bind=engine, expire_on_commit=False)
-
+# Async session factory
 AsyncSessionLocal = sessionmaker(
-    bind=engine, class_=AsyncSession, expire_on_commit=False
+    bind=engine,
+    class_=AsyncSession,
+    expire_on_commit=False,
 )
 
 
-# ✅ Fix: Ensure sessions are properly closed
-async def get_db():
+# Dependency for FastAPI routes
+async def get_db() -> AsyncGenerator[AsyncSession, None]:
+    """Yield a SQLAlchemy async session (FastAPI dependency)."""
     async with AsyncSessionLocal() as session:
         try:
             yield session
-        except Exception as e:
-            print(f"🚨 Database Error: {e}")
+        except Exception:
             await session.rollback()
             raise
-        finally:
-            await session.close()
