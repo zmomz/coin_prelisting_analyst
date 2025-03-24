@@ -1,10 +1,9 @@
 import uuid
-from datetime import datetime
+from sqlalchemy.sql import func
 
 from sqlalchemy import Boolean, Column, DateTime, String
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
-
 from app.db.base import Base
 
 
@@ -21,8 +20,13 @@ class Coin(Base):
     reddit = Column(String, nullable=True)
     telegram = Column(String, nullable=True)
     website = Column(String, nullable=True)
-    is_active = Column(Boolean, default=True, nullable=True)
-    created_at = Column(DateTime, default=datetime.now())
+    is_active = Column(Boolean, default=True, nullable=False)
+    created_at = Column(DateTime, default=func.timezone('UTC', func.current_timestamp()), nullable=False)
 
     # Relationships
-    scores = relationship("Score", back_populates="coin", cascade="all, delete-orphan")
+    scores = relationship(
+        "Score",
+        back_populates="coin",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )

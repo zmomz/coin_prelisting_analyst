@@ -1,10 +1,9 @@
 import uuid
-from datetime import datetime
 from enum import Enum as PyEnum
 
 from sqlalchemy import Boolean, Column, DateTime, Enum, String
 from sqlalchemy.dialects.postgresql import UUID
-
+from sqlalchemy.sql import func
 from app.db.base import Base
 
 
@@ -23,4 +22,4 @@ class User(Base):
     role = Column(Enum(UserRole, name="userrole"), default=UserRole.ANALYST, nullable=False)
 
     is_active = Column(Boolean, default=True, nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime, default=func.timezone('UTC', func.current_timestamp()), nullable=False)
