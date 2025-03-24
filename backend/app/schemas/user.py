@@ -2,16 +2,15 @@ import uuid
 from datetime import datetime
 from typing import Optional
 
-from pydantic import BaseModel, ConfigDict, EmailStr
-
+from pydantic import EmailStr
+from pydantic import Field as field
 from app.models.user import UserRole
+from app.schemas import SchemaBase
 
 
-class UserBase(BaseModel):
+class UserBase(SchemaBase):
     email: EmailStr
-    name: Optional[str] = None
-
-    model_config = ConfigDict(from_attributes=True)
+    name: Optional[str] = field(default=None)
 
 
 class UserCreate(UserBase):
@@ -19,11 +18,11 @@ class UserCreate(UserBase):
     role: UserRole = UserRole.ANALYST
 
 
-class UserUpdate(BaseModel):
-    email: Optional[EmailStr] = None
-    name: Optional[str] = None
-    password: Optional[str] = None
-    role: Optional[UserRole] = None
+class UserUpdate(SchemaBase):
+    email: Optional[EmailStr] = field(default=None)
+    name: Optional[str] = field(default=None)
+    password: Optional[str] = field(default=None)
+    role: Optional[UserRole] = field(default=None)
 
 
 class UserOut(UserBase):
@@ -31,5 +30,3 @@ class UserOut(UserBase):
     role: UserRole
     is_active: bool
     created_at: datetime
-
-    model_config = ConfigDict(from_attributes=True)
