@@ -12,7 +12,10 @@ services:
     volumes:
       - .:/app  # Mount local source code for live updates
       - /app/__pycache__/  # Ignore Python cache
-    command: ["/bin/sh", "-c", "./scripts/wait-for-it.sh db:5432 -- python ./scripts/alembic.py upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"]
+    command: >
+      /bin/sh -c "./scripts/wait-for-it.sh db:5432 -- 
+      poetry run python scripts/alembic_wrapper.py upgrade head && 
+      poetry run uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"
 
   db:
     image: postgres:15
@@ -21,12 +24,12 @@ services:
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: ${POSTGRES_DB}  # Main DB created automatically
+      POSTGRES_DB: ${POSTGRES_DB}
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./scripts/init-db.sh:/docker-entrypoint-initdb.d/init-db.sh  # Initialize extra DB
+      - ./scripts/init-db.sh:/docker-entrypoint-initdb.d/init-db.sh
 
   redis:
     image: redis:6.2
@@ -46,7 +49,7 @@ services:
     volumes:
       - .:/app
     working_dir: /app
-    command: ["celery", "-A", "app.celery_app", "worker", "--loglevel=info", "-P", "gevent"]
+    command: ["poetry", "run", "celery", "-A", "app.celery_app", "worker", "--loglevel=info", "-P", "gevent"]
 
   celery_beat:
     build: .
@@ -57,8 +60,8 @@ services:
       - celery_worker
       - redis
     volumes:
-      - .:/app  # Mount local code for live updates
-    command: ["celery", "-A", "app.celery_app", "beat", "--loglevel=info"]
+      - .:/app
+    command: ["poetry", "run", "celery", "-A", "app.celery_app", "beat", "--loglevel=info"]
 
   healthcheck:
     image: curlimages/curl:latest
@@ -69,12 +72,8 @@ services:
       - redis
     entrypoint: ["/bin/sh", "-c"]
     command:
-      - |
-        while ! curl -sSf http://app:8000/api/health; do
-          echo "Waiting for API..."
-          sleep 5
-        done
-        echo "API is up!"
+      - >
+        while ! curl -sSf http://app:8000/api/health; do echo "Waiting for API..."; sleep 5; done; echo "API is up!"
 
 volumes:
   postgres_data:
