@@ -1,7 +1,6 @@
 from datetime import timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from pydantic import BaseModel, EmailStr
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
@@ -9,19 +8,17 @@ from app.core.logging import logger
 from app.core.security import create_access_token, verify_password
 from app.crud.users import create_user, get_user_by_email
 from app.db.session import get_db
-from app.schemas.auth import Token
+from app.schemas.auth import Token, LoginRequest
 from app.schemas.user import UserCreate, UserOut
 
-router = APIRouter(prefix="/auth")
-
-
-class LoginRequest(BaseModel):
-    email: EmailStr
-    password: str
+router = APIRouter(prefix="/auth", tags=["auth"])
 
 
 @router.post("/login", response_model=Token, status_code=status.HTTP_200_OK)
-async def login_user(login_data: LoginRequest, db: AsyncSession = Depends(get_db)):
+async def login_user(
+    login_data: LoginRequest,
+    db: AsyncSession = Depends(get_db),
+) -> Token:
     """Authenticate user and return JWT token."""
     normalized_email = login_data.email.strip().lower()
     user = await get_user_by_email(db, normalized_email)
@@ -39,11 +36,14 @@ async def login_user(login_data: LoginRequest, db: AsyncSession = Depends(get_db
     )
 
     logger.info(f"User {user.email} logged in successfully.")
-    return {"access_token": access_token, "token_type": "bearer"}
+    return Token(access_token=access_token, token_type="bearer")
 
 
 @router.post("/register", response_model=UserOut, status_code=status.HTTP_201_CREATED)
-async def register_user(user_in: UserCreate, db: AsyncSession = Depends(get_db)):
+async def register_user(
+    user_in: UserCreate,
+    db: AsyncSession = Depends(get_db),
+) -> UserOut:
     """Register a new user."""
     normalized_email = user_in.email.strip().lower()
 
@@ -55,7 +55,7 @@ async def register_user(user_in: UserCreate, db: AsyncSession = Depends(get_db))
             detail="Email already registered",
         )
 
-    user_in.email = normalized_email  # Normalize for creation
+    user_in.email = normalized_email
     new_user = await create_user(db, user_in)
     logger.info(f"Registered new user: {new_user.email} (role={new_user.role})")
 

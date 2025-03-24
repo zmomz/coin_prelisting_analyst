@@ -1,8 +1,13 @@
-from pydantic import BaseModel, ConfigDict
+from pydantic import EmailStr
+
+from app.schemas import SchemaBase
 
 
-class Token(BaseModel):
+class Token(SchemaBase):
     access_token: str
     token_type: str
 
-    model_config = ConfigDict(from_attributes=True)
+
+class LoginRequest(SchemaBase):
+    email: EmailStr
+    password: str
