@@ -20,7 +20,7 @@ class User(Base):
     email = Column(String, unique=True, index=True, nullable=False)
     hashed_password = Column(String, nullable=False)
     name = Column(String, nullable=True)
-    role = Column(Enum(UserRole), default=UserRole.ANALYST, nullable=False)
+    role = Column(Enum(UserRole, name="userrole"), default=UserRole.ANALYST, nullable=False)
 
-    is_active = Column(Boolean, default=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    is_active = Column(Boolean, default=True, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
