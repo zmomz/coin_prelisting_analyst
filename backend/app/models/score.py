@@ -20,8 +20,12 @@ class Score(Base):
         UniqueConstraint("coin_id", "scoring_weight_id", name="uix_coin_weight"),
     )
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
-
+    id = Column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        default=uuid.uuid4,
+        index=True
+    )
     coin_id = Column(
         UUID(as_uuid=True),
         ForeignKey("coins.id", ondelete="CASCADE"),
