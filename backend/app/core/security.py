@@ -1,36 +1,43 @@
 import uuid
 from datetime import datetime, timedelta
+from typing import Union
 
 from jose import jwt
 from passlib.context import CryptContext
 
 from app.core.config import settings
 
+# Password hashing context
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-
-def create_access_token(data: dict | str | uuid.UUID, expires_delta: int = None):
-    """Generate JWT access token."""
-    if isinstance(data, (str, uuid.UUID)):
-        to_encode = {"sub": str(data)}
-    else:
-        to_encode = data.copy()
-
-    expires_delta = (
-        settings.ACCESS_TOKEN_EXPIRE_MINUTES if expires_delta is None else expires_delta
-    )
-    if isinstance(expires_delta, timedelta):
-        expires_delta = int(expires_delta.total_seconds() / 60)
-
-    expire = datetime.now() + timedelta(minutes=expires_delta)
-    to_encode.update({"exp": expire})
-
-    return jwt.encode(to_encode, settings.SECRET_KEY, algorithm="HS256")
+# JWT Algorithm
+ALGORITHM = "HS256"
 
 
-def verify_password(plain_password, hashed_password):
+def create_access_token(
+    data: Union[dict, str, uuid.UUID],
+    expires_delta: Union[int, timedelta, None] = None,
+) -> str:
+    """Generate a JWT access token."""
+    payload = {"sub": str(data)} if isinstance(data, (str, uuid.UUID)) else data.copy()
+
+    # Default to settings value if not provided
+    if expires_delta is None:
+        expires_delta = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+    elif isinstance(expires_delta, int):
+        expires_delta = timedelta(minutes=expires_delta)
+
+    expire = datetime.utcnow() + expires_delta
+    payload.update({"exp": expire})
+
+    return jwt.encode(payload, settings.SECRET_KEY, algorithm=ALGORITHM)
+
+
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    """Verify a plain password against its hash."""
     return pwd_context.verify(plain_password, hashed_password)
 
 
-def get_password_hash(password):
+def get_password_hash(password: str) -> str:
+    """Hash a password using bcrypt."""
     return pwd_context.hash(password)

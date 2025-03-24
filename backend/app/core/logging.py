@@ -8,8 +8,8 @@ LOG_FORMAT = "%(asctime)s [%(levelname)s] %(name)s: %(message)s"
 LOG_LEVEL = settings.LOG_LEVEL.upper()
 
 
-def configure_logging():
-    """Configure root, Uvicorn, and third-party loggers."""
+def configure_logging() -> None:
+    """Configure root, Uvicorn, Celery, and app-level loggers."""
     logging_config = {
         "version": 1,
         "disable_existing_loggers": False,
@@ -45,16 +45,24 @@ def configure_logging():
                 "handlers": ["console"],
                 "propagate": False,
             },
-            "celery": {"level": LOG_LEVEL, "handlers": ["console"], "propagate": False},
-            "app": {"level": LOG_LEVEL, "handlers": ["console"], "propagate": False},
+            "celery": {
+                "level": LOG_LEVEL,
+                "handlers": ["console"],
+                "propagate": False,
+            },
+            "app": {
+                "level": LOG_LEVEL,
+                "handlers": ["console"],
+                "propagate": False,
+            },
         },
     }
 
     logging.config.dictConfig(logging_config)
 
 
-# Run this on app startup or early init
+# Initialize logging at import time
 configure_logging()
 
-# You can import this in modules
+# Main logger for app usage
 logger = logging.getLogger("app")
