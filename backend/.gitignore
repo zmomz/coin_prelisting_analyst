@@ -107,3 +107,10 @@ celerybeat.pid
 # ------------------------
 
 instance/
+
+# ------------------------
+# 📝 Project planning
+# ------------------------
+
+TODO.md
+structure.txt
