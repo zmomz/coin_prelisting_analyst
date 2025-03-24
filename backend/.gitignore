@@ -1,34 +1,37 @@
-# Ignore all .env files except .env.example
+# ------------------------
+# 📦 ENVIRONMENT SETTINGS
+# ------------------------
+
+# Ignore all .env files except the template
 .env*
 !.env.example
 
-# Byte-compiled / cached files
+# Virtual environments
+venv/
+.venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# ------------------------
+# 🐍 PYTHON COMPILED FILES
+# ------------------------
+
 __pycache__/
 *.py[cod]
 *$py.class
 *.so
-*.DS_Store
 
-# Virtual environments
-venv/
-
-# Logs and database dumps
-logs/
-*.log
-*.sqlite3
-*.db
-*.sql
-dump.rdb
-
-# Secret credentials
-config/settings_local.py
-
-# Compiled files
+# Compiled C extensions
 *.out
 *.o
-*.pyc
 
-# Unit test & coverage reports
+# ------------------------
+# 🧪 TESTING & COVERAGE
+# ------------------------
+
+.pytest_cache/
 htmlcov/
 .coverage
 .tox/
@@ -37,30 +40,70 @@ test-results.xml
 coverage.xml
 *.cover
 *.hypothesis/
+test_debug.log
 
-# IDE/editor files
-.vscode/
-.idea/
+# ------------------------
+# 🧰 STATIC ANALYSIS TOOLS
+# ------------------------
+
+mypy_cache/
+ruff_cache/
+
+# ------------------------
+# ⚙️ CONFIGURATION
+# ------------------------
+
+*.DS_Store
+*.pid
 *.swp
 *.swo
 
-# FastAPI & Uvicorn
-instance/
-*.pid
+# ------------------------
+# 📝 LOGS & DATABASE
+# ------------------------
 
-# Docker
-docker-compose.override.yml
+logs/
+*.log
+*.sqlite3
+*.db
+*.sql
+dump.rdb
+
+# Secret config (override if needed)
+config/settings_local.py
+
+# ------------------------
+# 🐳 DOCKER
+# ------------------------
+
 .dockerignore
+docker-compose.override.yml
 
-# Migrations & cache
-alembic/versions/*.pyc
-alembic/versions/*.pyo
-alembic/versions/*.DS_Store
+# ------------------------
+# ⚙️ ALEMBIC MIGRATIONS
+# ------------------------
 
-# Celery & Redis
+migrations/**/__pycache__/
+migrations/**/versions/*.pyc
+migrations/**/versions/*.pyo
+migrations/**/versions/*.DS_Store
+
+# ------------------------
+# 🔁 CELERY / REDIS
+# ------------------------
+
 celerybeat-schedule
 celerybeat.pid
 
-# Static analysis
-mypy_cache/
-ruff_cache/
+# ------------------------
+# 💻 IDE / EDITOR FILES
+# ------------------------
+
+.vscode/
+.idea/
+
+# ------------------------
+# ⚡ FASTAPI / UVICORN
+# ------------------------
+
+instance/
