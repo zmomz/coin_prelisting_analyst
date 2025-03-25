@@ -10,7 +10,7 @@ logger.info("🔧 Initializing Celery...")
 
 # Create Celery app
 celery_app = Celery(
-    "coin_prelisting_worker",
+    "worker",
     broker=settings.CELERY_BROKER_URL,
     backend=settings.CELERY_RESULT_BACKEND,
 )
@@ -24,13 +24,13 @@ celery_app.conf.timezone = "UTC"
 # Celery Beat Schedule: Periodic Tasks
 celery_app.conf.beat_schedule = {
     # 🪙 Fetch latest coins list from CoinGecko
-    "update_coins_list": {
-        "task": "app.tasks.coin_data.update_coins_list",
+    "bootstrap_supported_coins": {
+        "task": "app.tasks.bootstrap.bootstrap_supported_coins",
         "schedule": crontab(hour=0, minute=0),  # Once daily at midnight UTC
     },
-    # 📊 Fetch and store metrics (every 6 hours)
-    "fetch_coin_data": {
-        "task": "app.tasks.coin_data.fetch_coin_data",
+    # 📊 Fetch and store coin data and metrics (every 6 hours)
+    "fetch_and_update_all_coins": {
+        "task": "app.tasks.coin_data.fetch_and_update_all_coins",
         "schedule": 60 * 60 * 6,  # every 6 hours
     },
     # 📈 Recalculate all coin scores

@@ -1,8 +1,8 @@
 """new migration
 
-Revision ID: 7e3dbd21e14e
-Revises: 6cfaa6bec471
-Create Date: 2025-03-24 06:42:04.730660
+Revision ID: 2ccdda6a0688
+Revises: 
+Create Date: 2025-03-25 08:18:30.868437
 
 """
 from typing import Sequence, Union
@@ -12,8 +12,8 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision: str = '7e3dbd21e14e'
-down_revision: Union[str, None] = '6cfaa6bec471'
+revision: str = '2ccdda6a0688'
+down_revision: Union[str, None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
@@ -75,12 +75,12 @@ def upgrade() -> None:
     op.create_table('metrics',
     sa.Column('id', sa.UUID(), nullable=False),
     sa.Column('coin_id', sa.UUID(), nullable=False),
-    sa.Column('market_cap', sa.JSON(), nullable=False),
-    sa.Column('volume_24h', sa.JSON(), nullable=False),
-    sa.Column('liquidity', sa.JSON(), nullable=False),
-    sa.Column('github_activity', sa.JSON(), nullable=True),
-    sa.Column('twitter_sentiment', sa.JSON(), nullable=True),
-    sa.Column('reddit_sentiment', sa.JSON(), nullable=True),
+    sa.Column('market_cap', sa.Float(), nullable=True),
+    sa.Column('volume_24h', sa.Float(), nullable=True),
+    sa.Column('liquidity', sa.Float(), nullable=True),
+    sa.Column('github_activity', sa.Float(), nullable=True),
+    sa.Column('twitter_sentiment', sa.Float(), nullable=True),
+    sa.Column('reddit_sentiment', sa.Float(), nullable=True),
     sa.Column('fetched_at', sa.DateTime(), server_default=sa.text("timezone('UTC', CURRENT_TIMESTAMP)"), nullable=False),
     sa.Column('is_active', sa.Boolean(), nullable=False),
     sa.Column('created_at', sa.DateTime(), server_default=sa.text("timezone('UTC', CURRENT_TIMESTAMP)"), nullable=False),
@@ -108,8 +108,8 @@ def upgrade() -> None:
     op.create_table('suggestions',
     sa.Column('id', sa.UUID(), nullable=False),
     sa.Column('coin_id', sa.UUID(), nullable=False),
-    sa.Column('user_id', sa.UUID(), nullable=True),
-    sa.Column('note', sa.String(), nullable=True),
+    sa.Column('user_id', sa.UUID(), nullable=False),
+    sa.Column('note', sa.Text(), nullable=True),
     sa.Column('status', sa.Enum('PENDING', 'APPROVED', 'REJECTED', name='suggestionstatus'), nullable=False),
     sa.Column('is_active', sa.Boolean(), nullable=False),
     sa.Column('created_at', sa.DateTime(), server_default=sa.text("timezone('UTC', CURRENT_TIMESTAMP)"), nullable=False),

@@ -1,6 +1,7 @@
 from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import Session
 from sqlalchemy.future import select
 
 from app.models.metric import Metric
@@ -43,3 +44,11 @@ async def delete_metric(db: AsyncSession, db_metric: Metric) -> None:
     """Soft delete a metric."""
     db_metric.is_active = False
     await db.commit()
+
+
+def create_metric_sync(db: Session, metric_in: MetricCreate) -> Metric:
+    metric = Metric(**metric_in.model_dump())
+    db.add(metric)
+    db.commit()
+    db.refresh(metric)
+    return metric

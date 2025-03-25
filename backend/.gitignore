@@ -23,7 +23,10 @@ __pycache__/
 *$py.class
 *.so
 
+# ------------------------
 # Compiled C extensions
+# ------------------------
+
 *.out
 *.o
 
@@ -114,3 +117,12 @@ instance/
 
 TODO.md
 structure.txt
+
+# ------------------------
+# cache
+# ------------------------
+
+.mypy_cache
+.pytest_cache
+.ruff_cache
+__pycache__

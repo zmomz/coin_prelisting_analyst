@@ -1,9 +1,7 @@
 import uuid
 import pytest
-from sqlalchemy.sql import func
 from httpx import AsyncClient
-
-from app.schemas.metric import MetricOut, MetricValue
+from app.schemas.metric import MetricOut
 from app.core.config import settings
 from datetime import datetime
 
@@ -13,12 +11,12 @@ URL = f"{settings.API_V1_STR}/metrics"
 def create_metric_payload(coin_id: str) -> dict:
     return {
         "coin_id": coin_id,
-        "market_cap": {"value": 1000000.0, "currency": "USD"},
-        "volume_24h": {"value": 50000.0, "currency": "USD"},
-        "liquidity": {"value": 250000.0, "currency": "USD"},
-        "github_activity": {"count": 250000.0},
-        "twitter_sentiment": {"score": 0.7},
-        "reddit_sentiment": {"score": 0.9},
+        "market_cap": 1000000.0,
+        "volume_24h": 50000.0,
+        "liquidity": 250000.0,
+        "github_activity": 120.0,
+        "twitter_sentiment": 0.7,
+        "reddit_sentiment": 0.9,
         "fetched_at": str(datetime.now())
     }
 
@@ -43,9 +41,9 @@ async def test_create_metric_unauthorized(normal_client, test_coin):
 @pytest.mark.asyncio(loop_scope="session")
 async def test_create_metric_invalid(unauthorized_client, test_coin):
     payload = create_metric_payload(str(test_coin.id))
-    payload.pop("market_cap")
+    payload.pop("market_cap")  # Remove required field
     response = await unauthorized_client.post(f"{URL}/", json=payload)
-    assert response.status_code == 401
+    assert response.status_code == 401  # unauthorized, not bad request
 
 
 @pytest.mark.asyncio(loop_scope="session")
@@ -77,26 +75,26 @@ async def test_list_metrics_by_coin(manager_client, test_coin, test_metrics):
 async def test_update_metric(manager_client, test_metrics):
     metric = test_metrics[0]
     update = {
-        "github_activity": {"count": 250000.0},
-        "twitter_sentiment": {"score": 0.7},
+        "github_activity": 222.0,
+        "twitter_sentiment": 0.99
     }
     response = await manager_client.put(f"{URL}/{metric.id}", json=update)
     assert response.status_code == 200
     data = response.json()
-    assert data["github_activity"] == {"count": 250000.0}
-    assert data["twitter_sentiment"]["score"] == 0.7
+    assert data["github_activity"] == 222.0
+    assert data["twitter_sentiment"] == 0.99
 
 
 @pytest.mark.asyncio(loop_scope="session")
 async def test_update_metric_unauthorized(normal_client, test_metrics):
     metric = test_metrics[0]
-    response = await normal_client.put(f"{URL}/{metric.id}", json={"github_activity": {"count": 1}})
+    response = await normal_client.put(f"{URL}/{metric.id}", json={"github_activity": 111.0})
     assert response.status_code == 403
 
 
 @pytest.mark.asyncio(loop_scope="session")
 async def test_update_metric_not_found(manager_client):
-    response = await manager_client.put(f"{URL}/{uuid.uuid4()}", json={"github_activity": {"count": 1}})
+    response = await manager_client.put(f"{URL}/{uuid.uuid4()}", json={"github_activity": 111.0})
     assert response.status_code == 404
 
 
@@ -107,7 +105,7 @@ async def test_delete_metric(manager_client, test_metrics):
     assert response.status_code == 200
     assert response.json()["detail"] == "Metric deleted successfully"
 
-    # Ensure it no longer shows up
+    # Ensure it's soft-deleted
     response = await manager_client.get(f"{URL}/{metric.id}")
     assert response.status_code == 404
 

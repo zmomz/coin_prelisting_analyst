@@ -1,12 +1,11 @@
 from typing import Optional
-from sqlalchemy.ext.asyncio import AsyncSession
-
-from app.crud.metrics import create_metric
-from app.crud.coins import update_coin, get_by_coingeckoid, create_coin
+from sqlalchemy.orm import Session
+from app.crud.metrics import create_metric_sync
+from app.crud.coins import update_coin_sync, get_by_coingeckoid_sync, create_coin_sync
 from app.schemas.coin import CoinCreate, CoinUpdate
 from app.schemas.metric import MetricCreate
 from app.models.coin import Coin
-from app.utils.api_clients.coingecko import CoinGeckoClient
+from app.utils.api_clients.coingeckosync import SyncCoinGeckoClient
 from loguru import logger
 from datetime import datetime
 
@@ -15,20 +14,20 @@ def extract_first_link(links: list) -> Optional[str]:
     return links[0] if links and isinstance(links, list) else None
 
 
-async def update_coin_and_metrics_from_coingecko(
-    db: AsyncSession,
+def update_coin_and_metrics_from_coingecko_sync(
+    db: Session,
     coin_id: str,
-    coingecko_client: Optional[CoinGeckoClient] = None,
+    coingecko_client: Optional[SyncCoinGeckoClient] = None,
 ) -> Optional[Coin]:
     logger.info(f"Fetching data from CoinGecko for coin: {coin_id}")
     close_client = False
     if coingecko_client is None:
-        coingecko_client = CoinGeckoClient()
+        coingecko_client = SyncCoinGeckoClient()
         close_client = True
 
-    data = await coingecko_client.get_coin_data(coin_id)
+    data = coingecko_client.get_coin_data(coin_id)
     if close_client:
-        await coingecko_client.close()
+        coingecko_client.close()
 
     if not data or "id" not in data:
         logger.warning(f"No valid data returned for coin ID: {coin_id}")
@@ -49,13 +48,14 @@ async def update_coin_and_metrics_from_coingecko(
             "website": extract_first_link(links.get("homepage", [])),
         }
 
+        # Clean out empty fields
         coin_data = {k: (v if v not in ["", [], None] else None) for k, v in coin_data.items()}
 
-        db_coin = await get_by_coingeckoid(db, coin_data["coingeckoid"])
+        db_coin = get_by_coingeckoid_sync(db, coin_data["coingeckoid"])
         if db_coin:
-            db_coin = await update_coin(db=db, db_coin=db_coin, coin_in=CoinUpdate(**coin_data))
+            db_coin = update_coin_sync(db=db, db_coin=db_coin, coin_in=CoinUpdate(**coin_data))
         else:
-            db_coin = await create_coin(db=db, coin_in=CoinCreate(**coin_data))
+            db_coin = create_coin_sync(db=db, coin_in=CoinCreate(**coin_data))
 
         # --- METRIC DATA ---
         market_data = data.get("market_data", {})
@@ -70,10 +70,10 @@ async def update_coin_and_metrics_from_coingecko(
             github_activity=developer_data.get("commit_count_4_weeks"),
             twitter_sentiment=community_data.get("twitter_followers"),
             reddit_sentiment=community_data.get("reddit_average_posts_48h"),
-            fetched_at=datetime.now(datetime.timezone.utc),
+            fetched_at=datetime.now(),
         )
 
-        await create_metric(db, metric_in=metric_data)
+        create_metric_sync(db, metric_in=metric_data)
 
         logger.success(f"✅ Updated coin and metrics: {db_coin.name}")
         return db_coin

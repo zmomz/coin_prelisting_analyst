@@ -102,6 +102,7 @@ wcwidth = "0.2.13"
 websockets = "15.0.1"
 "zope.event" = "5.0"
 "zope.interface" = "7.2"
+nest-asyncio = "^1.6.0"
 
 [tool.poetry.group.dev.dependencies]
 black = "25.1.0"

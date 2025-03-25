@@ -1,62 +1,161 @@
-from unittest.mock import AsyncMock, MagicMock, patch
-
 import pytest
+import pytest_asyncio
+from unittest.mock import AsyncMock, patch
+from uuid import uuid4
+
+from app.services.coin_updater import update_coin_and_metrics_from_coingecko
+from app.models.coin import Coin
 
 
-class DummyMetric:
-    def __init__(self, **kwargs):
-        self.__dict__.update(kwargs)
+@pytest_asyncio.fixture
+def mock_coin_data():
+    return {
+        "id": "testcoin",
+        "symbol": "tst",
+        "name": "Test Coin",
+        "description": {"en": "A test cryptocurrency"},
+        "links": {
+            "repos_url": {"github": ["https://github.com/test"]},
+            "twitter_screen_name": "test_twitter",
+            "subreddit_url": "https://reddit.com/r/test",
+            "telegram_channel_identifier": "test_channel",
+            "homepage": ["https://testcoin.org"]
+        },
+        "market_data": {
+            "market_cap": {"usd": 12345.67},
+            "total_volume": {"usd": 789.01},
+            "liquidity_score": 42.0
+        },
+        "community_data": {
+            "twitter_followers": 1337.0,
+            "reddit_average_posts_48h": 3.14
+        },
+        "developer_data": {
+            "commit_count_4_weeks": 27.0
+        }
+    }
 
 
 @pytest.mark.asyncio
-@patch("app.services.coin_updater.get_coins", new_callable=AsyncMock)
-@patch("app.services.coin_updater.fetch_coin_market_data", new_callable=AsyncMock)
+@patch("app.services.coin_updater.create_metric", new_callable=AsyncMock)
+@patch("app.services.coin_updater.get_by_coingeckoid", new_callable=AsyncMock)
+@patch("app.services.coin_updater.create_coin", new_callable=AsyncMock)
 @patch("app.services.coin_updater.update_coin", new_callable=AsyncMock)
-@patch("app.services.coin_updater.create_async_engine", new_callable=MagicMock)
-async def test_update_all_coin_metrics(
-    mock_create_engine,
+@patch("app.services.coin_updater.CoinGeckoClient")
+async def test_update_coin_and_metrics_from_coingecko_create(
+    mock_client_class,
     mock_update_coin,
-    mock_fetch_data,
-    mock_get_coins,
+    mock_create_coin,
+    mock_get_by_coingeckoid,
+    mock_create_metric,
+    mock_coin_data,
+    db_session,
 ):
-    with patch("app.services.coin_updater.Metric", new=DummyMetric):
-        mock_get_coins.return_value = [
-            type("Coin", (), {"id": 1, "symbol": "BTC", "coingeckoid": "bitcoin"})
-        ]
+    """
+    Test case: Coin does not exist in DB.
 
-        mock_fetch_data.return_value = {
-            "market_cap": 1000,
-            "total_volume": 200,
-            "liquidity_score": 5,
-            "developer_data": {"commit_count_4_weeks": 42},
-            "sentiment_votes_up_percentage": 90.0,
-            "sentiment_votes_down_percentage": 10.0,
-            "description": "desc",
-            "github": "https://github.com",
-            "x": "https://x.com/test",
-            "reddit": "https://reddit.com/r/test",
-            "telegram": "https://t.me/test",
-            "website": "https://coin.com",
-        }
+    Expected behavior:
+    - Fetch from CoinGecko
+    - Create a new Coin and Metric entry
+    - Do not call update_coin
+    """
+    # Setup mock CoinGecko client
+    mock_client = AsyncMock()
+    mock_client.get_coin_data.return_value = mock_coin_data
+    mock_client_class.return_value = mock_client
 
-        mock_session = AsyncMock()
-        mock_session.add = MagicMock()
-        mock_session_factory = MagicMock()
-        mock_session_factory.return_value.__aenter__.return_value = mock_session
+    mock_get_by_coingeckoid.return_value = None
 
-        mock_engine = MagicMock()
-        mock_engine.dispose = AsyncMock()
-        mock_create_engine.return_value = mock_engine
+    mock_uuid = uuid4()
+    mock_coin_obj = Coin(
+        id=mock_uuid,
+        coingeckoid="testcoin",
+        name="Test Coin",
+        symbol="TST",
+    )
+    mock_create_coin.return_value = mock_coin_obj
 
-        with patch(
-            "app.services.coin_updater.sessionmaker", return_value=mock_session_factory
-        ):
-            from app.services.coin_updater import update_all_coin_metrics
+    result = await update_coin_and_metrics_from_coingecko(db_session, "testcoin")
 
-            await update_all_coin_metrics()
+    assert result is not None
+    assert result.id == mock_uuid
+    assert result.name == "Test Coin"
+    mock_create_coin.assert_called_once()
+    mock_create_metric.assert_called_once()
+    mock_update_coin.assert_not_called()
 
-        mock_get_coins.assert_awaited_once()
-        mock_fetch_data.assert_awaited_once()
-        mock_update_coin.assert_awaited_once()
-        mock_session.commit.assert_awaited_once()
-        mock_engine.dispose.assert_awaited_once()
+
+@pytest.mark.asyncio
+@patch("app.services.coin_updater.create_metric", new_callable=AsyncMock)
+@patch("app.services.coin_updater.get_by_coingeckoid", new_callable=AsyncMock)
+@patch("app.services.coin_updater.create_coin", new_callable=AsyncMock)
+@patch("app.services.coin_updater.update_coin", new_callable=AsyncMock)
+@patch("app.services.coin_updater.CoinGeckoClient")
+async def test_update_coin_and_metrics_from_coingecko_update(
+    mock_client_class,
+    mock_update_coin,
+    mock_create_coin,
+    mock_get_by_coingeckoid,
+    mock_create_metric,
+    mock_coin_data,
+    db_session,
+):
+    """
+    Test case: Coin already exists in DB.
+
+    Expected behavior:
+    - Fetch from CoinGecko
+    - Update the Coin
+    - Create a new Metric
+    - Do not call create_coin
+    """
+    mock_client = AsyncMock()
+    mock_client.get_coin_data.return_value = mock_coin_data
+    mock_client_class.return_value = mock_client
+
+    coin_uuid = uuid4()
+    existing_coin = Coin(
+        id=coin_uuid,
+        coingeckoid="testcoin",
+        name="Old Coin",
+        symbol="TST",
+    )
+    updated_coin = Coin(
+        id=coin_uuid,
+        coingeckoid="testcoin",
+        name="Test Coin",
+        symbol="TST",
+    )
+
+    mock_get_by_coingeckoid.return_value = existing_coin
+    mock_update_coin.return_value = updated_coin
+
+    result = await update_coin_and_metrics_from_coingecko(db_session, "testcoin")
+
+    assert result is not None
+    assert result.id == coin_uuid
+    assert result.name == "Test Coin"
+    mock_update_coin.assert_called_once()
+    mock_create_coin.assert_not_called()
+    mock_create_metric.assert_called_once()
+
+
+@pytest.mark.asyncio
+@patch("app.services.coin_updater.CoinGeckoClient")
+async def test_update_coin_and_metrics_invalid_data(
+    mock_client_class,
+    db_session,
+):
+    """
+    Test case: CoinGecko returns None (coin not found or API error).
+
+    Expected behavior:
+    - Return None
+    - Do not raise exception
+    """
+    mock_client = AsyncMock()
+    mock_client.get_coin_data.return_value = None
+    mock_client_class.return_value = mock_client
+
+    result = await update_coin_and_metrics_from_coingecko(db_session, "nonexistent")
+    assert result is None

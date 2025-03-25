@@ -1,8 +1,8 @@
-"""init2
+"""new migration
 
-Revision ID: 6393c8bd193d
+Revision ID: 2f4a831cc6b9
 Revises: 
-Create Date: 2025-03-24 06:27:13.838388
+Create Date: 2025-03-25 08:18:30.480248
 
 """
 from typing import Sequence, Union
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision: str = '6393c8bd193d'
+revision: str = '2f4a831cc6b9'
 down_revision: Union[str, None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -46,7 +46,7 @@ def upgrade() -> None:
     sa.Column('developer_score', sa.Float(), nullable=False),
     sa.Column('community_score', sa.Float(), nullable=False),
     sa.Column('market_score', sa.Float(), nullable=False),
-    sa.Column('created_at', sa.DateTime(), nullable=True),
+    sa.Column('created_at', sa.DateTime(), server_default=sa.text("timezone('UTC', CURRENT_TIMESTAMP)"), nullable=False),
     sa.PrimaryKeyConstraint('id')
     )
     op.create_index(op.f('ix_scoring_weights_id'), 'scoring_weights', ['id'], unique=False)
@@ -75,12 +75,12 @@ def upgrade() -> None:
     op.create_table('metrics',
     sa.Column('id', sa.UUID(), nullable=False),
     sa.Column('coin_id', sa.UUID(), nullable=False),
-    sa.Column('market_cap', sa.JSON(), nullable=False),
-    sa.Column('volume_24h', sa.JSON(), nullable=False),
-    sa.Column('liquidity', sa.JSON(), nullable=False),
-    sa.Column('github_activity', sa.JSON(), nullable=True),
-    sa.Column('twitter_sentiment', sa.JSON(), nullable=True),
-    sa.Column('reddit_sentiment', sa.JSON(), nullable=True),
+    sa.Column('market_cap', sa.Float(), nullable=True),
+    sa.Column('volume_24h', sa.Float(), nullable=True),
+    sa.Column('liquidity', sa.Float(), nullable=True),
+    sa.Column('github_activity', sa.Float(), nullable=True),
+    sa.Column('twitter_sentiment', sa.Float(), nullable=True),
+    sa.Column('reddit_sentiment', sa.Float(), nullable=True),
     sa.Column('fetched_at', sa.DateTime(), server_default=sa.text("timezone('UTC', CURRENT_TIMESTAMP)"), nullable=False),
     sa.Column('is_active', sa.Boolean(), nullable=False),
     sa.Column('created_at', sa.DateTime(), server_default=sa.text("timezone('UTC', CURRENT_TIMESTAMP)"), nullable=False),
@@ -108,12 +108,12 @@ def upgrade() -> None:
     op.create_table('suggestions',
     sa.Column('id', sa.UUID(), nullable=False),
     sa.Column('coin_id', sa.UUID(), nullable=False),
-    sa.Column('user_id', sa.UUID(), nullable=True),
-    sa.Column('note', sa.String(), nullable=True),
+    sa.Column('user_id', sa.UUID(), nullable=False),
+    sa.Column('note', sa.Text(), nullable=True),
     sa.Column('status', sa.Enum('PENDING', 'APPROVED', 'REJECTED', name='suggestionstatus'), nullable=False),
-    sa.Column('is_active', sa.Boolean(), nullable=True),
-    sa.Column('created_at', sa.DateTime(), nullable=True),
-    sa.Column('updated_at', sa.DateTime(), nullable=True),
+    sa.Column('is_active', sa.Boolean(), nullable=False),
+    sa.Column('created_at', sa.DateTime(), server_default=sa.text("timezone('UTC', CURRENT_TIMESTAMP)"), nullable=False),
+    sa.Column('updated_at', sa.DateTime(), server_default=sa.text("timezone('UTC', CURRENT_TIMESTAMP)"), nullable=False),
     sa.ForeignKeyConstraint(['coin_id'], ['coins.id'], ondelete='CASCADE'),
     sa.ForeignKeyConstraint(['user_id'], ['users.id'], ondelete='SET NULL'),
     sa.PrimaryKeyConstraint('id')
