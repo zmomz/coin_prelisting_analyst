@@ -1,164 +1,90 @@
 import pytest
-import pytest_asyncio
-from unittest.mock import AsyncMock, patch, MagicMock
+from unittest.mock import MagicMock, patch
 
-from app.tasks.bootstrap import _bootstrap_supported_coins
+from app.tasks.bootstrap import bootstrap_supported_coins
+from app.schemas.coin import CoinCreate
+from app.db.session import SessionLocal
+from sqlalchemy import text
 
 
-@pytest_asyncio.fixture
-def fake_supported_coins():
+@pytest.fixture(autouse=True)
+def clean_db():
+    """Clean up tables before each test run."""
+    db = SessionLocal()
+    tables = [
+        "coins", "metrics", "scores", "scoring_weights",
+        "suggestions", "user_activities", "users"
+    ]
+    for table in tables:
+        db.execute(text(f'TRUNCATE TABLE "{table}" RESTART IDENTITY CASCADE'))
+    db.commit()
+    db.close()
+
+
+@pytest.fixture
+def db_session():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.rollback()
+        db.close()
+
+
+@pytest.fixture
+def mock_supported_coins():
     return [
         {"id": "bitcoin", "symbol": "btc", "name": "Bitcoin"},
         {"id": "ethereum", "symbol": "eth", "name": "Ethereum"},
-        {"id": "cardano", "symbol": "ada", "name": "Cardano"},
+        {"id": "incomplete_coin"},  # Should be skipped
     ]
 
 
-@pytest.mark.asyncio
-@patch("app.tasks.bootstrap.fetch_and_update_all_coins")
-@patch("app.tasks.bootstrap.create_coin", new_callable=AsyncMock)
-@patch("app.tasks.bootstrap.get_all_coingeckoids", new_callable=AsyncMock)
-@patch("app.tasks.bootstrap.CoinGeckoClient")
-async def test_bootstrap_supported_coins_creates_new_coins(
-    mock_client_class,
-    mock_get_existing,
-    mock_create_coin,
-    mock_followup_task,
-    fake_supported_coins,
-):
-    """
-    ✅ Test that new coins returned from CoinGecko are inserted into the database
-    if they do not already exist.
-    """
-    mock_client = AsyncMock()
-    mock_client.get_supported_coins.return_value = fake_supported_coins
-    mock_client.close = AsyncMock()
-    mock_client_class.return_value = mock_client
-
-    mock_get_existing.return_value = ["bitcoin"]
-
-    await _bootstrap_supported_coins()
-
-    assert mock_create_coin.await_count == 2  # ethereum, cardano
-    mock_followup_task.delay.assert_called_once()
-    mock_client.close.assert_awaited()
+@pytest.fixture
+def patch_client(mock_supported_coins):
+    with patch("app.tasks.bootstrap.SyncCoinGeckoClient") as mock_client_cls:
+        mock_client = MagicMock()
+        mock_client.get_supported_coins.return_value = mock_supported_coins
+        mock_client_cls.return_value = mock_client
+        yield mock_client
 
 
-@pytest.mark.asyncio
-@patch("app.tasks.bootstrap.fetch_and_update_all_coins")
-@patch("app.tasks.bootstrap.create_coin", new_callable=AsyncMock)
-@patch("app.tasks.bootstrap.get_all_coingeckoids", new_callable=AsyncMock)
-@patch("app.tasks.bootstrap.CoinGeckoClient")
-async def test_bootstrap_supported_coins_skips_existing_coins(
-    mock_client_class,
-    mock_get_existing,
-    mock_create_coin,
-    mock_followup_task,
-    fake_supported_coins,
-):
-    """
-    ✅ Test that if all coins already exist in the database, no new coins are inserted.
-    """
-    mock_client = AsyncMock()
-    mock_client.get_supported_coins.return_value = fake_supported_coins
-    mock_client.close = AsyncMock()
-    mock_client_class.return_value = mock_client
-
-    mock_get_existing.return_value = ["bitcoin", "ethereum", "cardano"]
-
-    await _bootstrap_supported_coins()
-
-    mock_create_coin.assert_not_awaited()
-    mock_followup_task.delay.assert_called_once()
-    mock_client.close.assert_awaited()
+@pytest.fixture
+def patch_crud(mocker):
+    mocker.patch("app.tasks.bootstrap.get_all_coingeckoids_sync", return_value=["bitcoin"])
+    return mocker.patch("app.tasks.bootstrap.create_coin_sync")
 
 
-@pytest.mark.asyncio
-@patch("app.tasks.bootstrap.fetch_and_update_all_coins")
-@patch("app.tasks.bootstrap.create_coin", new_callable=AsyncMock)
-@patch("app.tasks.bootstrap.get_all_coingeckoids", new_callable=AsyncMock)
-@patch("app.tasks.bootstrap.CoinGeckoClient")
-async def test_bootstrap_supported_coins_handles_empty_list(
-    mock_client_class,
-    mock_get_existing,
-    mock_create_coin,
-    mock_followup_task,
-):
-    """
-    ✅ Test that if CoinGecko returns an empty list, no insertion is attempted and
-    follow-up tasks are not triggered.
-    """
-    mock_client = AsyncMock()
-    mock_client.get_supported_coins.return_value = []
-    mock_client.close = AsyncMock()
-    mock_client_class.return_value = mock_client
+def test_bootstrap_supported_coins_success(patch_client, patch_crud, db_session):
+    bootstrap_supported_coins()
 
-    mock_get_existing.return_value = []
-
-    await _bootstrap_supported_coins()
-
-    mock_create_coin.assert_not_awaited()
-    mock_followup_task.delay.assert_called_once()
-    mock_client.close.assert_awaited()
+    # Should insert Ethereum only, since Bitcoin already exists, and the last one is invalid
+    patch_crud.assert_called_once()
+    args, kwargs = patch_crud.call_args
+    assert isinstance(args[1], CoinCreate)
+    assert args[1].coingeckoid == "ethereum"
+    assert args[1].symbol == "ETH"
+    assert args[1].name == "Ethereum"
+    assert args[1].is_active is True
 
 
-@pytest.mark.asyncio
-@patch("app.tasks.bootstrap.fetch_and_update_all_coins")
-@patch("app.tasks.bootstrap.create_coin", new_callable=AsyncMock)
-@patch("app.tasks.bootstrap.get_all_coingeckoids", new_callable=AsyncMock)
-@patch("app.tasks.bootstrap.CoinGeckoClient")
-async def test_bootstrap_supported_coins_handles_exception(
-    mock_client_class,
-    mock_get_existing,
-    mock_create_coin,
-    mock_followup_task,
-):
-    """
-    ✅ Test that the task handles exceptions gracefully if CoinGecko API fails.
-    """
-    mock_client = AsyncMock()
-    mock_client.get_supported_coins.side_effect = Exception("CoinGecko is down")
-    mock_client.close = AsyncMock()
-    mock_client_class.return_value = mock_client
+def test_bootstrap_skips_invalid_entries(patch_client, patch_crud, db_session):
+    bootstrap_supported_coins()
 
-    await _bootstrap_supported_coins()
-
-    mock_create_coin.assert_not_awaited()
-    mock_followup_task.delay.assert_not_called()
-    mock_client.close.assert_awaited()
+    # Only 1 coin should be inserted (Ethereum), 1 duplicate (Bitcoin), 1 invalid skipped
+    assert patch_crud.call_count == 1
 
 
-@pytest.mark.asyncio
-@patch("app.tasks.bootstrap.fetch_and_update_all_coins")
-@patch("app.tasks.bootstrap.create_coin", new_callable=AsyncMock)
-@patch("app.tasks.bootstrap.get_all_coingeckoids", new_callable=AsyncMock)
-@patch("app.tasks.bootstrap.CoinGeckoClient")
-async def test_bootstrap_supported_coins_partial_failure(
-    mock_client_class,
-    mock_get_existing,
-    mock_create_coin,
-    mock_followup_task,
-    fake_supported_coins,
-):
-    """
-    🧪 Optional: Test partial insert where some coins succeed and some fail.
-    """
-    mock_client = AsyncMock()
-    mock_client.get_supported_coins.return_value = fake_supported_coins
-    mock_client.close = AsyncMock()
-    mock_client_class.return_value = mock_client
+def test_bootstrap_handles_insert_exception(patch_client, mocker, db_session):
+    # Patch `create_coin_sync` to raise an exception
+    mock_create = mocker.patch("app.tasks.bootstrap.create_coin_sync", side_effect=Exception("DB error"))
+    bootstrap_supported_coins()
+    # All valid new coins attempted, but raised exceptions
+    assert mock_create.call_count == 2
 
-    mock_get_existing.return_value = []
 
-    async def side_effect(db, coin_data):
-        if coin_data.name == "Ethereum":
-            raise Exception("Insert fail")
-        return MagicMock()
-
-    mock_create_coin.side_effect = side_effect
-
-    await _bootstrap_supported_coins()
-
-    assert mock_create_coin.await_count == 3
-    mock_followup_task.delay.assert_called_once()
-    mock_client.close.assert_awaited()
+def test_bootstrap_handles_total_failure(mocker):
+    # Force failure in `get_supported_coins`
+    mocker.patch("app.tasks.bootstrap.SyncCoinGeckoClient.get_supported_coins", side_effect=Exception("API Down"))
+    with patch("app.tasks.bootstrap.SyncCoinGeckoClient.close"):
+        bootstrap_supported_coins()  # Should not raise

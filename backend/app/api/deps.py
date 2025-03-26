@@ -4,7 +4,7 @@ import uuid
 import logging
 
 from fastapi import Depends, HTTPException, status
-from fastapi.security import OAuth2PasswordBearer
+from fastapi.security import APIKeyHeader
 from jose import JWTError, jwt
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -15,18 +15,25 @@ from app.models.user import User, UserRole
 
 logger = logging.getLogger(__name__)
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl=f"{settings.API_V1_STR}/auth/login")
+# Replace OAuth2 with APIKeyHeader for clean Swagger Authorize
+api_key_header = APIKeyHeader(name="Authorization", auto_error=False)
 
 
 async def get_current_user(
     db: AsyncSession = Depends(get_db),
-    token: str = Depends(oauth2_scheme),
+    token: str = Depends(api_key_header),
 ) -> User:
     """Extract user from JWT token."""
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
     )
+
+    if not token or not token.lower().startswith("bearer "):
+        logger.warning("Missing or invalid Authorization header")
+        raise credentials_exception
+
+    token = token[7:]  # strip 'Bearer '
 
     try:
         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=["HS256"])
@@ -66,8 +73,8 @@ async def get_current_manager(
     """Restrict access to managers only."""
     if current_user.role != UserRole.MANAGER:
         logger.warning(
-            f"Access denied: {current_user.email} \
-                ({current_user.role}) is not a manager"
+            f"Access denied: {current_user.email} "
+            f"({current_user.role}) is not a manager"
         )
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,

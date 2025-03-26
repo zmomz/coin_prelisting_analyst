@@ -131,3 +131,7 @@ def update_coin_sync(db: Session, db_coin: Coin, coin_in: CoinUpdate) -> Coin:
 def get_tracked_coins_sync(db: Session) -> list[str]:
     result = db.execute(select(Coin.coingeckoid).where(Coin.is_active == True))
     return [row[0] for row in result.all()]
+
+
+def get_all_sync(db: Session) -> list:
+    return db.query(Coin).all()

@@ -52,3 +52,15 @@ def create_metric_sync(db: Session, metric_in: MetricCreate) -> Metric:
     db.commit()
     db.refresh(metric)
     return metric
+
+
+def get_latest_active_by_coin_sync(db: Session, coin_id: UUID) -> Metric | None:
+    return (
+        db.query(Metric)
+        .filter(
+            Metric.coin_id == coin_id,
+            Metric.is_active == True,
+        )
+        .order_by(Metric.fetched_at.desc())
+        .first()
+    )

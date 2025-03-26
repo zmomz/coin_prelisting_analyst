@@ -1,5 +1,4 @@
 from contextlib import asynccontextmanager
-
 from fastapi import FastAPI
 from starlette.middleware.cors import CORSMiddleware
 
@@ -10,6 +9,9 @@ from app.api.v1 import (
 )
 from app.core.config import settings
 from app.core.logging import logger
+
+from app.api.health import router as health_router
+
 
 API_PREFIX = settings.API_V1_STR if settings.API_V1_STR.startswith("/") else f"/{settings.API_V1_STR}"
 logger.info(f"API running with prefix: {API_PREFIX}")
@@ -35,6 +37,9 @@ tags_metadata = [
         {"name": "root", "description": "Serves as the base API endpoint with \
           service information"}
 ]
+
+
+# Optional: serve custom Reveal.js if not using CDN
 
 
 @asynccontextmanager
@@ -70,9 +75,6 @@ def create_app() -> FastAPI:
         logger.info("Health check passed.")
         return {"status": "ok"}
 
-    @app.get("/", tags=["root"])
-    async def root():
-        return {"message": "Welcome to the Coin Prelisting API!"}
 
     # Routers
     app.include_router(auth.router, prefix=API_PREFIX, tags=["auth"])
@@ -86,7 +88,7 @@ def create_app() -> FastAPI:
         suggestions.router, prefix=API_PREFIX, tags=["suggestions"]
     )
     app.include_router(metrics.router, prefix=API_PREFIX, tags=["metrics"])
-
+    app.include_router(health_router)
     return app
 
 

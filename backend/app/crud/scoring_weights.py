@@ -4,6 +4,7 @@ from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
+from sqlalchemy.orm import Session
 
 from app.models.scoring_weight import ScoringWeight
 from app.schemas.scoring_weight import ScoringWeightCreate, ScoringWeightUpdate
@@ -56,3 +57,7 @@ async def delete_scoring_weight(
 ) -> None:
     await db.delete(db_weight)
     await db.commit()
+
+
+def getsync(db: Session, weight_id: UUID) -> ScoringWeight | None:
+    return db.query(ScoringWeight).filter(ScoringWeight.id == weight_id).first()

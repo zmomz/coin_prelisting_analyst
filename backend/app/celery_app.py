@@ -34,14 +34,14 @@ celery_app.conf.beat_schedule = {
         "schedule": 60 * 60 * 6,  # every 6 hours
     },
     # 📈 Recalculate all coin scores
-    "recalculate_scores": {
-        "task": "app.tasks.scoring.recalculate_scores",
+    "score_all_coins": {
+        "task": "app.tasks.scoring_all.score_all_coins",
         "schedule": 60 * 60 * 6,  # every 6 hours
     },
     # 🔔 Notify about pending suggestions
     "notify_pending_suggestions": {
         "task": "app.tasks.notifications.notify_pending_suggestions",
-        "schedule": 60 * 60 * 24,  # every 24 hours
+        "schedule": 60 * 60 * 12,  # every 24 hours
     },
 }
 

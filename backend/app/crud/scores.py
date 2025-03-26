@@ -36,7 +36,7 @@ async def get_score(db: AsyncSession, score_id: UUID) -> Optional[Score]:
 
 async def get_scores_by_coin(
         db: AsyncSession, coin_id: UUID
-    ) -> list[Score]:
+) -> list[Score]:
     result = await db.execute(select(Score).where(Score.coin_id == coin_id))
     return result.scalars().all()
 

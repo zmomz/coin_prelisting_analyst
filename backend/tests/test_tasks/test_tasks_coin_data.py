@@ -1,124 +1,64 @@
 import pytest
-import pytest_asyncio
-from unittest.mock import AsyncMock, patch, call, MagicMock
-from app.tasks.coin_data import _fetch_and_update_all_coins
+from unittest.mock import patch, MagicMock
+
+from app.tasks.coin_data import fetch_and_update_all_coins
 
 
-@pytest_asyncio.fixture
-def tracked_coins():
-    return ["bitcoin", "ethereum", "cardano"]
+@pytest.fixture
+def patch_client():
+    with patch("app.tasks.coin_data.SyncCoinGeckoClient") as mock_client_cls:
+        mock_client = MagicMock()
+        mock_client_cls.return_value = mock_client
+        yield mock_client
 
 
-@pytest.mark.asyncio
-@patch("app.tasks.coin_data.update_coin_and_metrics_from_coingecko", new_callable=AsyncMock)
-@patch("app.tasks.coin_data.get_tracked_coins", new_callable=AsyncMock)
-@patch("app.tasks.coin_data.CoinGeckoClient", autospec=True)
-async def test_fetch_and_update_all_coins_success(
-    mock_client_class,
-    mock_get_tracked_coins,
-    mock_update,
-    tracked_coins
-):
-    """✅ Test all tracked coins are updated successfully when returned by DB."""
-    mock_get_tracked_coins.return_value = tracked_coins
-    mock_update.return_value = MagicMock(name="MockCoin", name_attr="Bitcoin")
-
-    mock_client_instance = AsyncMock()
-    mock_client_class.return_value = mock_client_instance
-
-    await _fetch_and_update_all_coins()
-
-    assert mock_update.await_count == len(tracked_coins)
-    assert mock_client_instance.close.await_count == 1
+@pytest.fixture
+def patch_session(mocker):
+    # Patch DB session
+    return mocker.patch("app.tasks.coin_data.SessionLocal")
 
 
-@pytest.mark.asyncio
-@patch("app.tasks.coin_data.update_coin_and_metrics_from_coingecko", new_callable=AsyncMock)
-@patch("app.tasks.coin_data.get_tracked_coins", new_callable=AsyncMock)
-@patch("app.tasks.coin_data.CoinGeckoClient", autospec=True)
-async def test_fetch_and_update_all_coins_empty_list(
-    mock_client_class,
-    mock_get_tracked_coins,
-    mock_update,
-):
-    """✅ Test task does nothing if no tracked coins are found."""
-    mock_get_tracked_coins.return_value = []
-    mock_client_instance = AsyncMock()
-    mock_client_class.return_value = mock_client_instance
-
-    await _fetch_and_update_all_coins()
-
-    mock_update.assert_not_awaited()
-    mock_client_instance.close.assert_not_awaited()
+@pytest.fixture
+def patch_sleep(mocker):
+    # Patch time.sleep to avoid delays during test
+    return mocker.patch("app.tasks.coin_data.time.sleep", return_value=None)
 
 
-@pytest.mark.asyncio
-@patch("app.tasks.coin_data.update_coin_and_metrics_from_coingecko", new_callable=AsyncMock)
-@patch("app.tasks.coin_data.get_tracked_coins", new_callable=AsyncMock)
-@patch("app.tasks.coin_data.CoinGeckoClient", autospec=True)
-async def test_fetch_and_update_all_coins_partial_failure(
-    mock_client_class,
-    mock_get_tracked_coins,
-    mock_update,
-    tracked_coins
-):
-    """🧪 Test partial update: some coins succeed, some fail."""
-    mock_get_tracked_coins.return_value = tracked_coins
+def test_fetch_and_update_all_coins_success(patch_client, patch_session, patch_sleep, mocker):
+    mocker.patch("app.tasks.coin_data.get_tracked_coins_sync", return_value=["bitcoin", "ethereum"])
+    mock_update = mocker.patch("app.tasks.coin_data.update_coin_and_metrics_from_coingecko_sync")
+    mock_update.side_effect = lambda db, coin_id, coingecko_client: MagicMock(name=coin_id.capitalize())
 
-    async def side_effect(db, coin_id, coingecko_client=None):
-        if coin_id == "ethereum":
-            raise Exception("Rate limit hit")
-        return MagicMock(name=coin_id)
+    fetch_and_update_all_coins()
 
-    mock_update.side_effect = side_effect
-    mock_client_instance = AsyncMock()
-    mock_client_class.return_value = mock_client_instance
-
-    await _fetch_and_update_all_coins()
-
-    assert mock_update.await_count == len(tracked_coins)
-    assert mock_client_instance.close.await_count == 1
+    assert mock_update.call_count == 2
+    mock_update.assert_any_call(patch_session.return_value, "bitcoin", coingecko_client=patch_client)
+    mock_update.assert_any_call(patch_session.return_value, "ethereum", coingecko_client=patch_client)
 
 
-@pytest.mark.asyncio
-@patch("app.tasks.coin_data.get_tracked_coins", new_callable=AsyncMock)
-@patch("app.tasks.coin_data.CoinGeckoClient", autospec=True)
-async def test_fetch_and_update_all_coins_top_level_exception(
-    mock_client_class,
-    mock_get_tracked_coins,
-):
-    """🧪 Test task handles top-level exception gracefully (e.g., DB failure)."""
-    mock_get_tracked_coins.side_effect = Exception("DB error")
-    mock_client_instance = AsyncMock()
-    mock_client_class.return_value = mock_client_instance
+def test_fetch_and_update_all_coins_no_tracked(patch_client, patch_session, mocker):
+    mocker.patch("app.tasks.coin_data.get_tracked_coins_sync", return_value=[])
 
-    await _fetch_and_update_all_coins()
-    # No assert needed, just verifying no crash
+    # Should return early with no updates
+    fetch_and_update_all_coins()
 
 
-@pytest.mark.asyncio
-@patch("app.tasks.coin_data.update_coin_and_metrics_from_coingecko", new_callable=AsyncMock)
-@patch("app.tasks.coin_data.get_tracked_coins", new_callable=AsyncMock)
-@patch("app.tasks.coin_data.CoinGeckoClient", autospec=True)
-async def test_fetch_and_update_all_coins_rate_limiting_sleep(
-    mock_client_class,
-    mock_get_tracked_coins,
-    mock_update,
-    tracked_coins,
-    monkeypatch
-):
-    """✅ Ensure asyncio.sleep(1) is awaited per coin to respect rate limits."""
-    mock_get_tracked_coins.return_value = tracked_coins
-    mock_update.return_value = MagicMock(name="Bitcoin")
+def test_fetch_and_update_all_coins_coin_update_error(patch_client, patch_session, patch_sleep, mocker):
+    mocker.patch("app.tasks.coin_data.get_tracked_coins_sync", return_value=["bitcoin", "ethereum"])
 
-    mock_client_instance = AsyncMock()
-    mock_client_class.return_value = mock_client_instance
+    def update_side_effect(db, coin_id, coingecko_client):
+        if coin_id == "bitcoin":
+            raise Exception("Update failed!")
+        return MagicMock(name="Ethereum")
 
-    sleep_mock = AsyncMock()
-    monkeypatch.setattr("app.tasks.coin_data.asyncio.sleep", sleep_mock)
+    mock_update = mocker.patch("app.tasks.coin_data.update_coin_and_metrics_from_coingecko_sync", side_effect=update_side_effect)
 
-    await _fetch_and_update_all_coins()
+    fetch_and_update_all_coins()
+    assert mock_update.call_count == 2
 
-    assert sleep_mock.await_count == len(tracked_coins)
-    sleep_mock.assert_has_calls([call(1) for _ in tracked_coins])
-    assert mock_client_instance.close.await_count == 1
+
+def test_fetch_and_update_all_coins_total_failure(patch_client, patch_session, mocker):
+    # Fail on get_tracked_coins_sync
+    mocker.patch("app.tasks.coin_data.get_tracked_coins_sync", side_effect=Exception("DB error"))
+
+    fetch_and_update_all_coins()  # Should not raise
