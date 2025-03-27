@@ -4,7 +4,8 @@
 
 # Ignore all .env files except the template
 .env*
-!.env.example
+!.env.example 
+!.env.docker.example
 
 # Virtual environments
 venv/
@@ -87,9 +88,7 @@ docker-compose.override.yml
 # ------------------------
 
 migrations/**/__pycache__/
-migrations/**/versions/*.pyc
-migrations/**/versions/*.pyo
-migrations/**/versions/*.DS_Store
+migrations/**/versions/*
 
 # ------------------------
 # 🔁 CELERY / REDIS

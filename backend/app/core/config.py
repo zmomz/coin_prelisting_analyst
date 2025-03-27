@@ -16,6 +16,8 @@ class Settings(BaseSettings):
     # DB & Redis
     DATABASE_URL: str
     TEST_DATABASE_URL: str
+    ALEMBIC_MAIN_DB: str
+    ALEMBIC_TEST_DB: str
     REDIS_URL: str
     CELERY_BROKER_URL: str
     CELERY_RESULT_BACKEND: str

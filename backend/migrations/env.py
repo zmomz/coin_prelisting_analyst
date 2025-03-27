@@ -1,12 +1,12 @@
 import os
 import sys
 from logging.config import fileConfig
-from decouple import config as decouple_config
-
+# from decouple import config as decouple_config
+from app.core.config import settings
 from sqlalchemy import engine_from_config
 from sqlalchemy import pool
 
-from scripts.alembic import context
+from scripts.alembic_wrapper import context
 
 # Add the parent directory to the Python path
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
@@ -23,10 +23,10 @@ config = context.config
 # Override sqlalchemy.url with environment variables
 section = config.config_ini_section
 config.set_section_option(
-    section, "ALEMBIC_MAIN_DB", decouple_config("ALEMBIC_MAIN_DB")
+    section, "ALEMBIC_MAIN_DB", settings.ALEMBIC_MAIN_DB,
 )
 config.set_section_option(
-    section, "ALEMBIC_TEST_DB", decouple_config("ALEMBIC_TEST_DB")
+    section, "ALEMBIC_TEST_DB", settings.ALEMBIC_TEST_DB
 )
 
 
